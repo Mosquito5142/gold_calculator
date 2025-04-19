@@ -1,8 +1,8 @@
 <?php
-$servername = "proxy-50.digital.organic:5436";
-$username = "root";
-$password = "3F0sRa4mp88o";
-$dbname = "recipenecklace";
+$servername = "";
+$username = "";
+$password = "";
+$dbname = "";
 
 try {
     $pdo = new PDO("mysql:host=$servername;dbname=$dbname", $username, $password);
