@@ -12,7 +12,7 @@ $user_dept = isset($_SESSION['recipenecklace_users_depart']) ? $_SESSION['recipe
 $current_user_id = isset($_SESSION['recipenecklace_users_id']) ? $_SESSION['recipenecklace_users_id'] : 0;
 $is_admin = $_SESSION['recipenecklace_users_level'] === 'Admin';
 
-if ($_SESSION['recipenecklace_users_level'] === 'Admin' || $user_dept === 'SG' || $user_dept === 'YS') {
+if ($_SESSION['recipenecklace_users_level'] === 'Admin' || $user_dept === 'SG' || $user_dept === 'YS' || $user_dept === 'หัวหน้าช่าง') {
     // ถ้าเป็น Admin หรืออยู่ในแผนก SG ให้ดึงข้อมูลทั้งหมด
     $necklace_all_details = get_necklace_all_details($pdo);
 } else {
@@ -20,7 +20,6 @@ if ($_SESSION['recipenecklace_users_level'] === 'Admin' || $user_dept === 'SG' |
     $necklace_all_details = get_necklace_details_by_user($pdo, $_SESSION['recipenecklace_users_id']);
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -85,6 +84,61 @@ if ($_SESSION['recipenecklace_users_level'] === 'Admin' || $user_dept === 'SG' |
         .img-thumbnail {
             cursor: pointer;
         }
+
+        @media (max-width: 767.98px) {
+            table#necklaceTable thead {
+                display: none;
+            }
+
+            table#necklaceTable tbody tr {
+                display: block;
+                margin-bottom: 15px;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                padding: 10px;
+                background-color: #fff;
+                position: relative;
+            }
+
+            table#necklaceTable tbody td {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 8px 10px;
+                border: none;
+                border-bottom: 1px solid #eee;
+            }
+
+            table#necklaceTable tbody td:last-child {
+                border-bottom: none;
+            }
+
+            table#necklaceTable tbody td::before {
+                content: attr(data-label);
+                font-weight: bold;
+                flex: 1;
+                color: #333;
+                margin-right: 10px;
+            }
+
+            table#necklaceTable tbody td img {
+                max-height: 80px;
+                height: auto;
+            }
+
+            table#necklaceTable tbody .details-control {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                padding: 0;
+                display: flex;
+                gap: 5px;
+            }
+
+            table#necklaceTable tbody .details-control i {
+                font-size: 16px;
+            }
+        }
     </style>
 </head>
 
@@ -119,8 +173,8 @@ if ($_SESSION['recipenecklace_users_level'] === 'Admin' || $user_dept === 'SG' |
                                         <th>รูป</th>
                                         <th>ลายสร้อย</th>
                                         <th>ประเภท</th>
-                                        <th>ผู้บันทึก</th>
                                         <th>วันที่บันทึก</th>
+                                        <th>ผู้บันทึก</th>
                                         <th width="120">จัดการ</th>
                                     </tr>
                                 </thead>
@@ -128,11 +182,11 @@ if ($_SESSION['recipenecklace_users_level'] === 'Admin' || $user_dept === 'SG' |
                                     <?php if (!empty($necklace_all_details)): ?>
                                         <?php foreach ($necklace_all_details as $detail): ?>
                                             <tr data-necklace-id="<?php echo $detail['necklace_detail_id']; ?>">
-                                                <td class="details-control text-center">
+                                                <td class="details-control text-center" data-label="">
                                                     <i class="fas fa-plus-circle"></i>
                                                     <i class="fas fa-minus-circle"></i>
                                                 </td>
-                                                <td class="text-center">
+                                                <td class="text-center" data-label="รูป">
                                                     <?php if (!empty($detail['image'])): ?>
                                                         <img src="uploads/img/necklace_detail/<?php echo htmlspecialchars($detail['image']); ?>"
                                                             class="img-thumbnail" style="max-height: 50px; width: auto;"
@@ -141,17 +195,20 @@ if ($_SESSION['recipenecklace_users_level'] === 'Admin' || $user_dept === 'SG' |
                                                         <i class="fas fa-image text-muted"></i>
                                                     <?php endif; ?>
                                                 </td>
-                                                <td><?php echo htmlspecialchars($detail['name']); ?></td>
-                                                <td><?php echo htmlspecialchars($detail['type']); ?></td>
-                                                <td><?php echo htmlspecialchars($detail['first_name']); ?></td>
-                                                <td><?php echo htmlspecialchars($detail['updated_at']); ?></td>
-                                                <td>
-                                                    <!-- ปุ่มดูข้อมูล - ทุกคนสามารถดูได้ -->
+                                                <td data-label="ลายสร้อย"><?php echo htmlspecialchars($detail['name']); ?></td>
+                                                <td data-label="ประเภท"><?php echo htmlspecialchars($detail['type']); ?></td>
+                                                <td data-label="วันที่บันทึก"><?php echo htmlspecialchars($detail['updated_at']); ?></td>
+                                                <td data-label="ผู้บันทึก"><?php echo htmlspecialchars($detail['first_name']); ?></td>
+                                                <td data-label="จัดการ">
                                                     <button class="btn btn-info btn-sm view-btn" data-id="<?php echo $detail['necklace_detail_id']; ?>">
                                                         <i class="fas fa-eye"></i>
                                                     </button>
 
-                                                    <?php if ($current_user_id == $detail['updated_users_id'] || $is_admin): ?>
+                                                    <?php if ($current_user_id == $detail['updated_users_id'] || $is_admin || $user_dept === 'หัวหน้าช่าง'): ?>
+                                                        <!-- เพิ่มปุ่มแชร์ -->
+                                                        <button type="button" class="btn btn-primary btn-sm share-btn" data-id="<?php echo $detail['necklace_detail_id']; ?>" data-name="<?php echo htmlspecialchars($detail['name']); ?>">
+                                                            <i class="fas fa-share-alt"></i>
+                                                        </button>
                                                         <button type="button" class="btn btn-warning btn-sm" onclick="editNecklace(<?php echo $detail['necklace_detail_id']; ?>)">
                                                             <i class="fas fa-edit"></i>
                                                         </button>
@@ -168,6 +225,7 @@ if ($_SESSION['recipenecklace_users_level'] === 'Admin' || $user_dept === 'SG' |
                                                     <?php endif; ?>
                                                 </td>
                                             </tr>
+
                                         <?php endforeach; ?>
                                     <?php endif; ?>
                                 </tbody>
@@ -178,22 +236,59 @@ if ($_SESSION['recipenecklace_users_level'] === 'Admin' || $user_dept === 'SG' |
             </div>
         </div>
     </div>
-
-    <!-- Modal แสดงรูปเต็ม -->
-    <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+    <!-- Modal สำหรับการแชร์ข้อมูล -->
+    <div class="modal fade" id="ShareModal" tabindex="-1" aria-labelledby="shareModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="imageModalTitle"></h5>
+                    <h5 class="modal-title" id="shareModalLabel">แชร์รายการสร้อย</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body text-center">
-                    <img id="fullImage" src="" class="img-fluid" alt="รูปเต็ม">
+                <div class="modal-body">
+                    <form id="shareForm">
+                        <input type="hidden" id="share_necklace_id" name="necklace_id">
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <h6>รายการสร้อย: <span id="share_necklace_name" class="text-primary"></span></h6>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label for="share_users" class="form-label">เลือกผู้ใช้ที่ต้องการแชร์</label>
+                                <select id="share_users" name="users_id[]" class="form-control select2" multiple>
+                                    <!-- ตัวเลือกผู้ใช้จะถูกเพิ่มด้วย JavaScript -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <h6>ผู้ใช้ที่มีสิทธิ์เข้าถึง</h6>
+                            <div class="table-responsive mt-2">
+                                <table class="table table-bordered table-sm" id="currentSharingTable">
+                                    <thead>
+                                        <tr class="text-center">
+                                            <th>ชื่อผู้ใช้</th>
+                                            <th>แผนก</th>
+                                            <th>ผู้แชร์</th>
+                                            <th>วันที่แชร์</th>
+                                            <th>จัดการ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- ข้อมูลผู้ใช้ที่มีสิทธิ์จะถูกเพิ่มด้วย JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer d-flex justify-content-end">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                    <button type="button" class="btn btn-primary" id="btn_save_share">บันทึกการแชร์</button>
                 </div>
             </div>
         </div>
     </div>
-
+    <?php include 'modal/imageModal.php'; ?>
     <?php include 'modal/necklace_detail_modal.php'; ?>
 
     <script src="assets/js/jquery-3.6.0.min.js"></script>
@@ -210,7 +305,7 @@ if ($_SESSION['recipenecklace_users_level'] === 'Admin' || $user_dept === 'SG' |
     <script src="js/necklace-form.js"></script>
     <script src="js/necklace-crud.js"></script>
     <script src="js/necklace-table.js"></script>
-
+    <script src="js/necklace-sharing.js"></script>
     <script>
         $(document).ready(function() {
             // ตัวแปร global สำหรับ DataTable
@@ -227,58 +322,53 @@ if ($_SESSION['recipenecklace_users_level'] === 'Admin' || $user_dept === 'SG' |
             function formatDetails(d) {
                 let necklaceId = $(d).data('necklace-id');
 
-                // สร้าง HTML สำหรับแสดงรายละเอียด
-                return '<div class="child-row">' +
-                    '<div class="row">' +
-                    '<div class="col-md-3">' +
-                    '<h6 class="border-bottom pb-2">สร้อยต้นแบบ</h6>' +
-                    '<p><strong>หนา:</strong> <span class="ptt-thick"></span></p>' +
-                    '<p><strong>ไส้:</strong> <span class="ptt-core"></span></p>' +
-                    '<p><strong>อัตราส่วน:</strong> <span class="ptt-ratio"></span></p>' +
-                    '</div>' +
-                    '<div class="col-md-3">' +
-                    '<h6 class="border-bottom pb-2">ลวดอกาโฟโต้(ยังไม่สกัด)</h6>' +
-                    '<p><strong>ยังไม่สกัด.รูลวด:</strong> <span class="agpt-thick"></span></p>' +
-                    '<p><strong>ยังไม่สกัด.นน.ลวดก่อนสกัด:</strong> <span class="agpt-core"></span></p>' +
-                    '<p><strong>ยังไม่สกัด.ค.ยาวลวด:</strong> <span class="agpt-ratio"></span></p>' +
-                    '</div>' +
-                    '<div class="col-md-3">' +
-                    '<h6 class="border-bottom pb-2">สร้อยต้นแบบ (นน.ทองอย่างเดียว)</h6>' +
-                    '<p><strong>นน.ทองอย่างเดียว.สร้อยยาว:</strong> <span class="true-length"></span></p>' +
-                    '<p><strong>นน.ทองอย่างเดียว.น้ำหนัก:</strong> <span class="true-weight"></span></p>' +
-                    '</div>' +
-                    '<div class="col-md-3">' +
-                    '<h6 class="border-bottom pb-2">สัดส่วนสร้อย</h6>' +
-                    '<p><strong>รูลวด:</strong> <span class="proportions-size"></span></p>' +
-                    '<p><strong>หน้ากว้าง(มม.):</strong> <span class="proportions-width"></span></p>' +
-                    '<p><strong>หนา(มม.):</strong> <span class="proportions-thick"></span></p>' +
-                    '<p><strong>ratio หน้ากว้าง:</strong> <span class="ratio-width"></span></p>' +
-                    '<p><strong>ratio หนา:</strong> <span class="ratio-thick"></span></p>' +
-                    '<p><strong>หมายเหตุ:</strong> <span class="comment"></span></p>' +
-                    '</div>' +
-                    '</div>' +
-                    '<div class="row mt-3">' +
-                    '<div class="col-12">' +
-                    '<h6 class="border-bottom pb-2">นำสร้อยไปบิด/ทุบ/ยืด</h6>' +
-                    '<div class="table-responsive">' +
-                    '<table class="table table-sm table-bordered tbs-table">' +
-                    '<thead class="table-light">' +
-                    '<tr>' +
-                    '<th>ชื่อ</th>' +
-                    '<th>ก่อน</th>' +
-                    '<th>หลัง</th>' +
-                    '</tr>' +
-                    '</thead>' +
-                    '<tbody>' +
-                    '<tr><td colspan="3" class="text-center">กำลังโหลดข้อมูล...</td></tr>' +
-                    '</tbody>' +
-                    '</table>' +
-                    '</div>' +
-                    '</div>' +
-                    '</div>' +
-                    '</div>';
-            }
+                return `
+                    <div class="child-row py-3 px-2 bg-light rounded">
+                        <div class="row g-3">
+                            <!-- สร้อยต้นแบบ -->
+                            <div class="col-md-6 col-lg-3">
+                                <div class="border rounded p-3 h-100">
+                                    <h6 class="border-bottom pb-2 mb-3">สร้อยต้นแบบ</h6>
+                                    <p><strong>หนา:</strong> <span class="ptt-thick"></span></p>
+                                    <p><strong>ไส้:</strong> <span class="ptt-core"></span></p>
+                                    <p><strong>อัตราส่วน:</strong> <span class="ptt-ratio"></span></p>
+                                </div>
+                            </div>
 
+                            <!-- ลวดอกาโฟโต้ -->
+                            <div class="col-md-6 col-lg-3">
+                                <div class="border rounded p-3 h-100">
+                                    <h6 class="border-bottom pb-2 mb-3">ลวดอกาโฟโต้ (ยังไม่สกัด)</h6>
+                                    <p><strong>ยังไม่สกัด.รูลวด:</strong> <span class="agpt-thick"></span></p>
+                                    <p><strong>ยังไม่สกัด.นน.ลวดก่อนสกัด:</strong> <span class="agpt-core"></span></p>
+                                    <p><strong>ยังไม่สกัด.ค.ยาวลวด:</strong> <span class="agpt-ratio"></span></p>
+                                </div>
+                            </div>
+
+                            <!-- ทองอย่างเดียว -->
+                            <div class="col-md-6 col-lg-3">
+                                <div class="border rounded p-3 h-100">
+                                    <h6 class="border-bottom pb-2 mb-3">สร้อยต้นแบบ (นน.ทองอย่างเดียว)</h6>
+                                    <p><strong>สร้อยยาว:</strong> <span class="true-length"></span></p>
+                                    <p><strong>น้ำหนัก:</strong> <span class="true-weight"></span></p>
+                                </div>
+                            </div>
+
+                            <!-- สัดส่วนสร้อย -->
+                            <div class="col-md-6 col-lg-3">
+                                <div class="border rounded p-3 h-100">
+                                    <h6 class="border-bottom pb-2 mb-3">สัดส่วนสร้อย</h6>
+                                    <p><strong>รูลวด:</strong> <span class="proportions-size"></span></p>
+                                    <p><strong>หน้ากว้าง (มม.):</strong> <span class="proportions-width"></span></p>
+                                    <p><strong>หนา (มม.):</strong> <span class="proportions-thick"></span></p>
+                                    <p><strong>Ratio หน้ากว้าง:</strong> <span class="ratio-width"></span></p>
+                                    <p><strong>Ratio หนา:</strong> <span class="ratio-thick"></span></p>
+                                    <p><strong>หมายเหตุ:</strong> <span class="comment"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+            }
             // สร้าง DataTable
             function initializeDataTable() {
                 necklaceTable = $('#necklaceTable').DataTable({
@@ -352,16 +442,10 @@ if ($_SESSION['recipenecklace_users_level'] === 'Admin' || $user_dept === 'SG' |
                         },
                         dataType: 'json',
                         success: function(response) {
-                            // Debug: ดูข้อมูลที่ได้รับจาก API
-                            console.log("API Response:", response);
-
                             // เติมข้อมูลลงในรายละเอียด
                             var child = row.child();
                             if (response.success) {
                                 var detail = response.necklace;
-                                console.log("Necklace Data:", detail);
-                                console.log("TBS Data:", detail.tbs);
-
                                 // เติมข้อมูลสร้อยพื้นฐาน
                                 child.find('.ptt-thick').text(detail.ptt_thick || '-');
                                 child.find('.ptt-core').text(detail.ptt_core || '-');

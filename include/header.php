@@ -56,9 +56,9 @@
                         </div>
 
                         <hr class="m-0" />
-                        <a class="dropdown-item" href="profile.php"><i class="me-2" data-feather="user"></i> My Profile</a>
+                        <a class="dropdown-item" href="profile.php"><i class="me-2" data-feather="user"></i> โปรไฟล์</a>
                         <hr class="m-0" />
-                        <a class="dropdown-item logout pb-0" href="functions/logout.php"><img src="assets/img/icons/log-out.svg" class="me-2" alt="img" />Logout</a>
+                        <a class="dropdown-item logout pb-0" href="functions/logout.php"><img src="assets/img/icons/log-out.svg" class="me-2" alt="img" />ออกจากระบบ</a>
                     </div>
                 </div>
             </li>
@@ -79,8 +79,8 @@
 
         <div class="dropdown-menu dropdown-menu-right">
             <?php if (isset($_SESSION['recipenecklace_users_id'])): ?>
-                <a class="dropdown-item" href="profile.php">My Profile</a>
-                <a class="dropdown-item" href="functions/logout.php">Logout</a>
+                <a class="dropdown-item" href="profile.php"><i class="me-2" data-feather="user"></i> โปรไฟล์</a>
+                <a class="dropdown-item" href="functions/logout.php"><img src="assets/img/icons/log-out.svg" class="me-2" alt="img" /> ออกจากระบบ</a>
             <?php else: ?>
                 <a class="dropdown-item" href="login.php">เข้าสู่ระบบ</a>
             <?php endif; ?>

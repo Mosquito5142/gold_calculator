@@ -8,7 +8,11 @@ error_reporting(E_ALL);
 require 'config/db_connect.php'; // เชื่อมต่อกับฐานข้อมูล
 require 'functions/management_user.php'; // นำเข้าคลาส User
 
-$users = getAllUsers($pdo);
+if ($_SESSION['recipenecklace_users_level'] == 'Admin') {
+    $users = getAllUsers($pdo);
+} else {
+    $users = getAllmechanic($pdo);
+}
 ?>
 <!DOCTYPE html>
 <html lang="th">

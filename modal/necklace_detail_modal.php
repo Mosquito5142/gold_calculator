@@ -1,5 +1,5 @@
             <!-- Modal -->
-            <div class="modal fade" id="necklaceModal" tabindex="-1">
+            <div class="modal fade" id="necklaceModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
                 <div class="modal-dialog modal-lg">
                     <div class="modal-content">
                         <div class="modal-header">
@@ -56,7 +56,7 @@
                                         <input type="number" class="form-control" name="agpt_core" step="0.01" required>
                                     </div>
                                     <div class="col-md-4">
-                                        <label class="form-label">ความยาวลวด</label>
+                                        <label class="form-label">ความยาวลวด (นิ้ว)</label>
                                         <input type="number" class="form-control" name="agpt_ratio" step="0.01" required>
                                     </div>
                                 </div>
@@ -65,7 +65,7 @@
                                 <div class="row mb-3">
                                     <h6>สร้อยต้นแบบ</h6>
                                     <div class="col-md-4">
-                                        <label class="form-label">ความยาว</label>
+                                        <label class="form-label">ความยาว (นิ้ว)</label>
                                         <input type="number" class="form-control" name="true_length" step="0.01" required>
                                     </div>
                                     <div class="col-md-4">

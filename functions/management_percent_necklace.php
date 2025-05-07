@@ -163,24 +163,56 @@ function handle_image_upload($file)
         mkdir($upload_path, 0777, true);
     }
 
-    // กำหนดนามสกุลไฟล์
-    $file_extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    $allowed_extensions = ['jpg', 'jpeg', 'png', 'webp'];
-
-    if (!in_array($file_extension, $allowed_extensions)) {
-        throw new Exception("รองรับเฉพาะไฟล์ JPG, PNG และ WEBP เท่านั้น");
-    }
-
-    // สร้างชื่อไฟล์ที่ไม่ซ้ำกัน คงนามสกุลเดิมไว้
+    // สร้างชื่อไฟล์ที่ไม่ซ้ำกัน
     $original_name = pathinfo($file['name'], PATHINFO_FILENAME);
-    $filename = sanitize_filename($original_name) . '_' . uniqid() . '.' . $file_extension;
+    $filename = sanitize_filename($original_name) . '_' . uniqid() . '.webp';
     $filepath = $upload_path . $filename;
 
-    // ย้ายไฟล์โดยตรงโดยไม่ต้องแปลงหรือปรับขนาด
-    if (!move_uploaded_file($file['tmp_name'], $filepath)) {
-        throw new Exception("ไม่สามารถบันทึกรูปภาพได้ กรุณาตรวจสอบสิทธิ์การเข้าถึงโฟลเดอร์");
+    // โหลดรูปต้นฉบับ
+    $source_image = null;
+    $image_type = exif_imagetype($file['tmp_name']);
+
+    switch ($image_type) {
+        case IMAGETYPE_JPEG:
+            $source_image = imagecreatefromjpeg($file['tmp_name']);
+            break;
+        case IMAGETYPE_PNG:
+            $source_image = imagecreatefrompng($file['tmp_name']);
+            break;
+        case IMAGETYPE_WEBP:
+            $source_image = imagecreatefromwebp($file['tmp_name']);
+            break;
+        default:
+            throw new Exception("รองรับเฉพาะไฟล์ JPG, PNG และ WEBP เท่านั้น");
     }
 
+    if (!$source_image) {
+        throw new Exception("ไม่สามารถโหลดรูปภาพได้");
+    }
+
+    // ปรับขนาดรูป
+    $width = imagesx($source_image);
+    $height = imagesy($source_image);
+    $new_width = 800;
+
+    if ($width > $new_width) {
+        $new_height = floor($height * ($new_width / $width));
+        $tmp = imagecreatetruecolor($new_width, $new_height);
+
+        // รักษาความโปร่งใสสำหรับ PNG
+        imagealphablending($tmp, false);
+        imagesavealpha($tmp, true);
+
+        imagecopyresampled($tmp, $source_image, 0, 0, 0, 0, $new_width, $new_height, $width, $height);
+        $source_image = $tmp;
+    }
+
+    // บันทึกเป็น WebP
+    if (!imagewebp($source_image, $filepath, 80)) {
+        throw new Exception("ไม่สามารถบันทึกรูปภาพได้");
+    }
+
+    imagedestroy($source_image);
     return $filename;
 }
 // เพิ่มฟังก์ชันสำหรับทำความสะอาดชื่อไฟล์

@@ -21,19 +21,28 @@
                     <div class="row">
                         <div class="col-md-4 mb-3">
                             <label for="users_level" class="form-label">ระดับ</label>
-                            <select class="form-control" id="users_level" name="users_level" required>
-                                <option value="User">User</option>
-                                <option value="Admin">Admin</option>
-                            </select>
+                            <?php if ($_SESSION['recipenecklace_users_level'] === 'Admin') : ?>
+                                <select class="form-control" id="users_level" name="users_level" required>
+                                    <option value="User">User</option>
+                                    <option value="Admin">Admin</option>
+                                </select>
+                            <?php else : ?>
+                                <input type="text" class="form-control" id="users_level" name="users_level" value="User" readonly>
+                            <?php endif; ?>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label for="users_depart" class="form-label">สถานะ</label>
-                            <select class="form-control" id="users_depart" name="users_depart" required>
-                                <option value="">เลือกแผนก</option>
-                                <option value="SG">SG</option>
-                                <option value="บ้านช่าง">บ้านช่าง</option>
-                                <option value="YS">YS</option>
-                            </select>
+                            <label for="users_depart" class="form-label">แผนก</label>
+                            <?php if ($_SESSION['recipenecklace_users_level'] === 'Admin') : ?>
+                                <select class="form-control" id="users_depart" name="users_depart" required>
+                                    <option value="">เลือกแผนก</option>
+                                    <option value="SG">SG</option>
+                                    <option value="YS">YS</option>
+                                    <option value="บ้านช่าง">บ้านช่าง</option>
+                                    <option value="หัวหน้าช่าง">หัวหน้าช่าง</option>
+                                </select>
+                            <?php else : ?>
+                                <input type="text" class="form-control" id="users_depart" name="users_depart" value="บ้านช่าง" readonly>
+                            <?php endif; ?>
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="users_status" class="form-label">สถานะ</label>
@@ -59,9 +68,9 @@
                             <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
                         </div>
                     </div>
-                    <div class="d-flex justify-content-center">
-                        <button type="submit" class="btn btn-primary">เพิ่มผู้ใช้งาน</button>
+                    <div class="modal-footer d-flex justify-content-end">
                         <button type="button" class="btn btn-secondary ms-2" data-bs-dismiss="modal">ปิด</button>
+                        <button type="submit" class="btn btn-primary">เพิ่มผู้ใช้งาน</button>
                     </div>
                 </form>
             </div>
@@ -93,18 +102,27 @@
                     <div class="row">
                         <div class="col-md-4 mb-2">
                             <label for="edit_users_level" class="form-label">ระดับ</label>
-                            <select class="form-control" id="edit_users_level" name="users_level" required>
-                                <option value="User">User</option>
-                                <option value="Admin">Admin</option>
-                            </select>
+                            <?php if ($_SESSION['recipenecklace_users_level'] === 'Admin') : ?>
+                                <select class="form-control" id="edit_users_level" name="users_level" required>
+                                    <option value="User">User</option>
+                                    <option value="Admin">Admin</option>
+                                </select>
+                            <?php else : ?>
+                                <input type="text" class="form-control" id="edit_users_level" name="users_level" value="User" readonly>
+                            <?php endif; ?>
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="edit_users_depart" class="form-label">แผนก</label>
-                            <select class="form-control" id="edit_users_depart" name="users_depart" required>
-                                <option value="SG">SG</option>
-                                <option value="บ้านช่าง">บ้านช่าง</option>
-                                <option value="YS">YS</option>
-                            </select>
+                            <?php if ($_SESSION['recipenecklace_users_level'] === 'Admin') : ?>
+                                <select class="form-control" id="edit_users_depart" name="users_depart" required>
+                                    <option value="SG">SG</option>
+                                    <option value="YS">YS</option>
+                                    <option value="บ้านช่าง">บ้านช่าง</option>
+                                    <option value="หัวหน้าช่าง">หัวหน้าช่าง</option>
+                                </select>
+                            <?php else : ?>
+                                <input type="text" class="form-control" id="edit_users_depart" name="users_depart" value="บ้านช่าง" readonly>
+                            <?php endif; ?>
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="edit_users_status" class="form-label">สถานะ</label>
@@ -130,9 +148,9 @@
                             <input type="password" class="form-control" id="edit_confirm_password" name="confirm_password">
                         </div>
                     </div>
-                    <div class="d-flex justify-content-center">
-                        <button type="submit" class="btn btn-primary">บันทึกการเปลี่ยนแปลง</button>
+                    <div class="modal-footer d-flex justify-content-end">
                         <button type="button" class="btn btn-secondary ms-2" data-bs-dismiss="modal">ปิด</button>
+                        <button type="submit" class="btn btn-primary">บันทึกการเปลี่ยนแปลง</button>
                     </div>
                 </form>
             </div>

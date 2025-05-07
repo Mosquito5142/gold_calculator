@@ -211,7 +211,7 @@ try {
                 $parts_height = null;
                 $parts_thick = null;
 
-                if ($type === 'สร้อย') {
+                if ($type === 'สร้อย' || $type === 'กำไล' || $type === 'มัลติ') {
                     $wire_hole = $_POST['wire_hole'][$i] ?? null;
                     $wire_thick = $_POST['wire_thick'][$i] ?? null;
                     $wire_core = $_POST['wire_core'][$i] ?? null;
@@ -224,7 +224,7 @@ try {
                 }
 
                 // ตรวจสอบว่ามีข้อมูลให้บันทึกหรือไม่
-                if ($type === 'สร้อย' && ($wire_hole !== null || $wire_thick !== null || $wire_core !== null || $scale_wire_weight !== null || $scale_wire_thick !== null)) {
+                if (($type === 'สร้อย' || $type === 'กำไล' || $type === 'มัลติ') && ($wire_hole !== null || $wire_thick !== null || $wire_core !== null || $scale_wire_weight !== null || $scale_wire_thick !== null)) {
                     // เพิ่มข้อมูลใหม่ (ไม่ต้องสนใจ ndp_id เก่า เพราะเราลบหมดแล้ว)
                     add_necklace_detail_parts(
                         $pdo,

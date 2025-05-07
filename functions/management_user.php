@@ -6,6 +6,12 @@ function getAllUsers($pdo)
     $stmt->execute();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
+function getAllmechanic($pdo)
+{
+    $stmt = $pdo->prepare("SELECT users_id, first_name, last_name, username, users_level, users_depart, users_status FROM users where users_depart = 'บ้านช่าง'");
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 
 // เพิ่มข้อมูลผู้ใช้งาน
 function addUser($pdo, $first_name, $last_name, $username, $password, $users_level, $users_depart, $users_status)
@@ -31,6 +37,11 @@ function editUser($pdo, $users_id, $first_name, $last_name, $username, $users_le
 // ลบข้อมูลผู้ใช้งาน
 function deleteUser($pdo, $users_id)
 {
+    // ลบข้อมูลในตาราง necklace_sharing ที่เกี่ยวข้องกับ users_id
+    $stmt = $pdo->prepare("DELETE FROM necklace_sharing WHERE users_id = ?");
+    $stmt->execute([$users_id]);
+
+    // ลบข้อมูลในตาราง users
     $stmt = $pdo->prepare("DELETE FROM users WHERE users_id = ?");
     $stmt->execute([$users_id]);
 }

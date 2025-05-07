@@ -210,6 +210,47 @@ foreach ($percent_necklaces as $necklace) {
             width: 100%;
             max-width: 400px;
         }
+
+        /* การไฮไลท์ช่องกว้างที่เป็นค่าอ้างอิง */
+        .reference-width {
+            background-color: #b3e0ff !important;
+            /* สีฟ้าอ่อน */
+            border: 2px solid #66b3ff !important;
+            box-shadow: 0 0 5px rgba(102, 179, 255, 0.5);
+        }
+
+        .reference-width::after {
+            content: " (ค่าอ้างอิง)";
+            font-size: 0.8em;
+            color: #007bff;
+            font-style: italic;
+        }
+
+        /* สำหรับการรวมมัลติ */
+        .multi-reference {
+            background-color: #b3e0ff !important;
+            /* สีฟ้าอ่อน */
+            border: 2px solid #66b3ff !important;
+            position: relative;
+        }
+
+        .multi-reference-label {
+            position: absolute;
+            bottom: -18px;
+            right: 0;
+            font-size: 0.8em;
+            color: #007bff;
+            background: #f8f9fa;
+            padding: 1px 3px;
+            border-radius: 3px;
+            border: 1px solid #dee2e6;
+        }
+
+        hr {
+            border: 0;
+            height: 1px;
+            background-color: rgb(0, 0, 0);
+        }
     </style>
 </head>
 
@@ -375,20 +416,7 @@ foreach ($percent_necklaces as $necklace) {
         </div>
     </div>
 
-    <!-- Modal แสดงรูปเต็ม -->
-    <div class="modal fade" id="imageModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="imageModalTitle"></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body text-center">
-                    <img id="fullImage" class="img-fluid" src="">
-                </div>
-            </div>
-        </div>
-    </div>
+    <?php include 'modal/imageModal.php'; ?>
     <?php include 'modal/percent_necklace_management_modal.php'; ?>
 
     <script src="assets/js/jquery-3.6.0.min.js"></script>
@@ -404,6 +432,7 @@ foreach ($percent_necklaces as $necklace) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
     <script src="assets/js/touchmove_table.js"></script>
     <script src="js/percent_necklace.js"></script>
+    <script src="js/percent_necklace_management.js"></script>
 
     <script>
         $(document).ready(function() {
@@ -584,221 +613,6 @@ foreach ($percent_necklaces as $necklace) {
             // ตั้งค่าเริ่มต้น - เลือกตัวกรองทั้งหมด
             $('#filter-all').prop('checked', true).trigger('change');
         });
-
-        function viewPercent(id) {
-            $.getJSON(`actions/get_percent.php?id=${id}`, function(data) {
-                if (!data.success) {
-                    Swal.fire({
-                        icon: "error",
-                        title: "เกิดข้อผิดพลาด",
-                        text: data.message || "ไม่สามารถโหลดข้อมูลได้",
-                    });
-                    return;
-                }
-
-                let html = `
-            <div class="row mb-3">
-                <div class="col-md-4 text-center">
-                    ${
-                    data.percent.image
-                        ? `<img src="uploads/img/percent_necklace/${data.percent.image}" class="img-thumbnail mb-2" style="max-height:150px;">`
-                        : '<i class="fas fa-image fa-4x text-muted"></i>'
-                    }
-                </div>
-                <div class="col-md-8">
-                    <h5>${data.percent.pn_name}</h5>
-                    <div>น้ำหนัก (กรัม): <b>${data.percent.pn_grams}</b></div>
-                    <div>บาท: <b>${(parseFloat(data.percent.pn_grams) / 15.2).toFixed(
-                    2
-                    )}</b></div>
-                </div>
-            </div>
-            <hr>
-            <h6>รายละเอียด</h6>
-            <div class="table-responsive">
-                <table class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>ประเภท</th>
-                            <th>ชื่อ</th>
-                            <th>น้ำหนัก (กรัม)</th>
-                            <th>%</th>
-                            <th>ความยาว</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-
-                // Calculate total weight for percentage calculation
-                let totalWeight = 0;
-                if (data.specialDetails?.length) {
-                    data.specialDetails.forEach(
-                        (d) => (totalWeight += parseFloat(d.pnd_weight_grams) || 0)
-                    );
-                }
-                if (data.details?.length) {
-                    data.details.forEach(
-                        (d) => (totalWeight += parseFloat(d.pnd_weight_grams) || 0)
-                    );
-                }
-
-                // รายการพิเศษ (special items)
-                if (data.specialDetails?.length) {
-                    data.specialDetails.forEach(function(d) {
-                        const percent = (
-                            ((parseFloat(d.pnd_weight_grams) || 0) / totalWeight) *
-                            100
-                        ).toFixed(2);
-                        html += `<tr class="table-light">
-            <td><span class="badge bg-secondary">พิเศษ</span></td>
-            <td>${d.pnd_name}</td>
-            <td>${d.pnd_weight_grams}</td>
-            <td>${percent}%</td>
-            <td>${d.pnd_long_inch || "-"}</td>
-            </tr>`;
-                    });
-                }
-
-                // รายการปกติ (regular items)
-                if (data.details?.length) {
-                    data.details.forEach(function(d) {
-                        const percent = (
-                            ((parseFloat(d.pnd_weight_grams) || 0) / totalWeight) *
-                            100
-                        ).toFixed(2);
-                        html += `<tr>
-                <td>${d.pnd_type || "-"}</td>
-                <td>${d.pnd_name}</td>
-                <td>${d.pnd_weight_grams}</td>
-                <td>${percent}%</td>
-                <td>${d.pnd_long_inch || "-"}</td>
-            </tr>`;
-                    });
-                }
-
-                // รายการรวม (total row)
-                html += `<tr class="table-primary">
-            <td colspan="2" class="text-end fw-bold">รวม</td>
-            <td class="fw-bold">${totalWeight.toFixed(2)}</td>
-            <td class="fw-bold">100%</td>
-            <td></td>
-            </tr>`;
-
-                html += `</tbody></table></div>`;
-
-                // ค้นหาค่า reference สำหรับการคำนวณ ratio
-                let referenceWidth = null;
-                if (data.details?.length) {
-                    // หาค่ากว้างแรกของสร้อย
-                    for (const d of data.details) {
-                        if (d.pnd_type === "สร้อย" && d.parts?.scale_wire_weight) {
-                            referenceWidth = parseFloat(d.parts.scale_wire_weight);
-                            break;
-                        }
-                    }
-                }
-
-                // Display ratio information
-                if (data.details?.some((d) => d.parts)) {
-                    html += `<h6 class="mt-4">ข้อมูลสัดส่วน (Ratio)</h6>
-            <div class="table-responsive">
-                <table class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>ชื่อ</th>
-                            <th>ประเภท</th>
-                            <th>ขนาด</th>
-                            <th>Ratio</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-
-                    // First show necklace items
-                    const necklaceItems = data.details.filter(
-                        (d) => d.pnd_type === "สร้อย" && d.parts
-                    );
-                    if (necklaceItems.length > 0) {
-                        html += `<tr class="table-secondary"><td colspan="4" class="fw-bold">สร้อย</td></tr>`;
-
-                        necklaceItems.forEach(function(d) {
-                            const wireWidth = parseFloat(d.parts.scale_wire_weight) || 0;
-                            const wireThick = parseFloat(d.parts.scale_wire_thick) || 0;
-
-                            html += `<tr>
-                <td>${d.pnd_name}</td>
-                <td>สร้อย</td>
-                <td>
-                    <div>รูลวด: ${d.parts.wire_hole || "-"}</div>
-                    <div>หนา: ${d.parts.wire_thick || "-"}</div>
-                    <div>ไส้: ${d.parts.wire_core || "-"}</div>
-                    <div>กว้าง: ${d.parts.scale_wire_weight || "-"} มม.</div>
-                    <div>หนา: ${d.parts.scale_wire_thick || "-"} มม.</div>
-                </td>
-                <td></td>
-            </tr>`;
-                        });
-                    }
-
-                    // Then show parts items
-                    const partsItems = data.details.filter(
-                        (d) => d.pnd_type === "อะไหล่" && d.parts
-                    );
-                    if (partsItems.length > 0) {
-                        html += `<tr class="table-secondary"><td colspan="4" class="fw-bold">อะไหล่</td></tr>`;
-
-                        partsItems.forEach(function(d) {
-                            const partsWidth = parseFloat(d.parts.parts_weight) || 0;
-                            const partsHeight = parseFloat(d.parts.parts_height) || 0;
-                            const partsThick = parseFloat(d.parts.parts_thick) || 0;
-
-                            let ratioInfo = "";
-                            if (referenceWidth && partsWidth) {
-                                const widthRatio = (partsWidth / referenceWidth).toFixed(2);
-                                ratioInfo += `<div>กว้าง: ${widthRatio}</div>`;
-                            }
-
-                            if (referenceWidth && partsHeight) {
-                                const heightRatio = (partsHeight / referenceWidth).toFixed(2);
-                                ratioInfo += `<div>สูง: ${heightRatio}</div>`;
-                            }
-
-                            if (referenceWidth && partsThick) {
-                                const thickRatio = (partsThick / referenceWidth).toFixed(2);
-                                ratioInfo += `<div>หนา: ${thickRatio}</div>`;
-                            }
-
-                            html += `<tr>
-                <td>${d.pnd_name}</td>
-                <td>อะไหล่</td>
-                <td>
-                    <div>กว้าง: ${d.parts.parts_weight || "-"} มม.</div>
-                    <div>สูง: ${d.parts.parts_height || "-"} มม.</div>
-                    <div>หนา: ${d.parts.parts_thick || "-"} มม.</div>
-                </td>
-                <td>${ratioInfo || "-"}</td>
-            </tr>`;
-                        });
-                    }
-
-                    html += `</tbody></table></div>`;
-                }
-
-                $("#percentViewFooter").html(`
-            <a href="percent_necklace.php?pn_id=${id}" class="btn btn-success">
-            <i class="fas fa-calculator"></i> ไปหน้าคำนวน
-            </a>
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
-            `);
-
-                $("#percentViewContent").html(html);
-                $("#percentViewModal").modal("show");
-            }).fail(function(jqXHR, textStatus, errorThrown) {
-                Swal.fire({
-                    icon: "error",
-                    title: "เกิดข้อผิดพลาด",
-                    text: errorThrown || "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้",
-                });
-            });
-        }
     </script>
 </body>
 

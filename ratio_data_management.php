@@ -7,7 +7,11 @@ error_reporting(E_ALL);
 require 'config/db_connect.php'; // เชื่อมต่อกับฐานข้อมูล
 require 'functions/management_ratio.php'; // นำเข้าคลาส User
 
-$ratio_data = get_ratio_data($pdo);
+$ratio_data = get_ratio_master($pdo);
+$current_user_id = isset($_SESSION['recipenecklace_users_id']) ? $_SESSION['recipenecklace_users_id'] : 0;
+$is_admin = isset($_SESSION['recipenecklace_users_level']) && $_SESSION['recipenecklace_users_level'] === 'Admin';
+$user_dept = isset($_SESSION['recipenecklace_users_depart']) ? $_SESSION['recipenecklace_users_depart'] : '';
+
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -66,7 +70,7 @@ $ratio_data = get_ratio_data($pdo);
                                                 <th>นน.ลวดก่อนสกัด(กรัม)</th>
                                                 <th>ค.ยาวลวด(นิ้ว)</th>
                                                 <th>อัพเดทล่าสุด</th>
-                                                <th>โดย</th>
+                                                <th>ผู้บันทึก</th>
                                                 <th>จัดการ</th>
                                             </tr>
                                         </thead>
@@ -82,12 +86,21 @@ $ratio_data = get_ratio_data($pdo);
                                                     <td><?php echo htmlspecialchars($data['updated_at']); ?></td>
                                                     <td><?php echo htmlspecialchars($data['first_name']); ?></td>
                                                     <td>
-                                                        <button class="btn btn-warning btn-sm text-white btn-edit" data-bs-toggle="modal" data-bs-target="#editRatioModal" data-ratio='<?php echo json_encode($data); ?>'>
-                                                            <i class="fas fa-edit"></i> แก้ไข
-                                                        </button>
-                                                        <button class="btn btn-danger btn-sm text-white btn-delete" data-bs-toggle="modal" data-bs-target="#deleteRatioModal" data-id="<?php echo $data['ratio_id']; ?>">
-                                                            <i class="fas fa-trash"></i> ลบ
-                                                        </button>
+                                                        <?php if ($data['updated_users_id'] == $current_user_id || $is_admin || $user_dept === 'หัวหน้าช่าง'): ?>
+                                                            <button class="btn btn-warning btn-sm text-white btn-edit" data-bs-toggle="modal" data-bs-target="#editRatioModal" data-ratio='<?php echo json_encode($data); ?>'>
+                                                                <i class="fas fa-edit"></i> แก้ไข
+                                                            </button>
+                                                            <button class="btn btn-danger btn-sm text-white btn-delete" data-bs-toggle="modal" data-bs-target="#deleteRatioModal" data-id="<?php echo $data['ratio_id']; ?>">
+                                                                <i class="fas fa-trash"></i> ลบ
+                                                            </button>
+                                                        <?php else: ?>
+                                                            <button class="btn btn-secondary btn-sm text-white btn-edit">
+                                                                <i class="fas fa-edit"></i> แก้ไข
+                                                            </button>
+                                                            <button class="btn btn-secondary btn-sm text-white">
+                                                                <i class="fas fa-trash"></i> ลบ
+                                                            </button>
+                                                        <?php endif; ?>
                                                     </td>
                                                 </tr>
                                             <?php endforeach; ?>

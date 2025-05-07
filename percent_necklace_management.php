@@ -6,6 +6,7 @@ require 'functions/management_percent_necklace.php';
 $percent_necklaces = get_percent_necklace($pdo);
 $current_user_id = isset($_SESSION['recipenecklace_users_id']) ? $_SESSION['recipenecklace_users_id'] : 0;
 $is_admin = isset($_SESSION['recipenecklace_users_level']) && $_SESSION['recipenecklace_users_level'] === 'Admin';
+$user_dept = isset($_SESSION['recipenecklace_users_depart']) ? $_SESSION['recipenecklace_users_depart'] : '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -42,10 +43,87 @@ $is_admin = isset($_SESSION['recipenecklace_users_level']) && $_SESSION['recipen
         ::-ms-input-placeholder {
             color: #ff9999 !important;
         }
+
+        /* การไฮไลท์ช่องกว้างที่เป็นค่าอ้างอิง */
+        .reference-width {
+            background-color: #b3e0ff !important;
+            /* สีฟ้าอ่อน */
+            border: 2px solid #66b3ff !important;
+            box-shadow: 0 0 5px rgba(102, 179, 255, 0.5);
+        }
+
+        .reference-width::after {
+            content: " (ค่าอ้างอิง)";
+            font-size: 0.8em;
+            color: #007bff;
+            font-style: italic;
+        }
+
+        /* สำหรับการรวมมัลติ */
+        .multi-reference {
+            background-color: #b3e0ff !important;
+            /* สีฟ้าอ่อน */
+            border: 2px solid #66b3ff !important;
+            position: relative;
+        }
+
+        .multi-reference-label {
+            position: absolute;
+            bottom: -18px;
+            right: 0;
+            font-size: 0.8em;
+            color: #007bff;
+            background: #f8f9fa;
+            padding: 1px 3px;
+            border-radius: 3px;
+            border: 1px solid #dee2e6;
+        }
+
         hr {
             border: 0;
             height: 1px;
-            background-color:rgb(0, 0, 0);
+            background-color: rgb(0, 0, 0);
+        }
+
+        @media (max-width: 767.98px) {
+            table#percent_necklace thead {
+                display: none;
+            }
+
+            table#percent_necklace tbody tr {
+                display: block;
+                margin-bottom: 15px;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                padding: 10px;
+                background-color: #fff;
+            }
+
+            table#percent_necklace tbody td {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 8px 10px;
+                border: none;
+                border-bottom: 1px solid #eee;
+            }
+
+            table#percent_necklace tbody td:last-child {
+                border-bottom: none;
+            }
+
+            table#percent_necklace tbody td::before {
+                content: attr(data-label);
+                font-weight: bold;
+                flex: 1;
+                color: #333;
+                margin-right: 10px;
+            }
+
+            table#percent_necklace tbody td img {
+                max-height: 100px;
+                height: auto;
+            }
         }
     </style>
 </head>
@@ -87,15 +165,15 @@ $is_admin = isset($_SESSION['recipenecklace_users_level']) && $_SESSION['recipen
                                         <th width="60">รูป</th>
                                         <th>ชื่อ</th>
                                         <th>น้ำหนัก (กรัม)</th>
-                                        <th>ผู้บันทึก</th>
                                         <th>วันที่บันทึก</th>
+                                        <th>ผู้บันทึก</th>
                                         <th>จัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($percent_necklaces as $pn): ?>
                                         <tr>
-                                            <td class="text-center">
+                                            <td class="text-center" data-label="รูป">
                                                 <?php if (!empty($pn['image'])): ?>
                                                     <img src="uploads/img/percent_necklace/<?php echo htmlspecialchars($pn['image']); ?>"
                                                         class="img-thumbnail" style="max-height: 50px; width: auto;"
@@ -104,17 +182,17 @@ $is_admin = isset($_SESSION['recipenecklace_users_level']) && $_SESSION['recipen
                                                     <i class="fas fa-image text-muted"></i>
                                                 <?php endif; ?>
                                             </td>
-                                            <td><?php echo htmlspecialchars($pn['pn_name']); ?></td>
-                                            <td><?php echo htmlspecialchars($pn['pn_grams']); ?></td>
-                                            <td><?php echo htmlspecialchars($pn['first_name']); ?></td>
-                                            <td><?php echo htmlspecialchars($pn['updated_at']); ?></td>
-                                            <td>
+                                            <td data-label="ชื่อ"><?php echo htmlspecialchars($pn['pn_name']); ?></td>
+                                            <td data-label="น้ำหนัก (กรัม)"><?php echo htmlspecialchars($pn['pn_grams']); ?></td>
+                                            <td data-label="วันที่บันทึก"><?php echo htmlspecialchars($pn['updated_at']); ?></td>
+                                            <td data-label="ผู้บันทึก"><?php echo htmlspecialchars($pn['first_name']); ?></td>
+                                            <td data-label="จัดการ">
                                                 <!-- ปุ่มรูปตาเอาไว้ดูข้อมูล (ทุกคนสามารถดูได้) -->
                                                 <button class="btn btn-info btn-sm" onclick="viewPercent(<?php echo $pn['pn_id']; ?>)">
                                                     <i class="fas fa-eye"></i>
                                                 </button>
 
-                                                <?php if ($pn['users_id'] == $current_user_id || $is_admin): ?>
+                                                <?php if ($pn['users_id'] == $current_user_id || $is_admin || $user_dept === 'หัวหน้าช่าง'): ?>
                                                     <!-- ปุ่มแก้ไขและลบ - แสดงเฉพาะเจ้าของข้อมูล -->
                                                     <button class="btn btn-warning btn-sm" onclick="editPercent(<?php echo $pn['pn_id']; ?>)">
                                                         <i class="fas fa-edit"></i>
@@ -142,6 +220,7 @@ $is_admin = isset($_SESSION['recipenecklace_users_level']) && $_SESSION['recipen
             </div>
         </div>
     </div>
+    <?php include 'modal/imageModal.php'; ?>
     <?php include 'modal/percent_necklace_management_modal.php'; ?>
 
     <script src="assets/js/jquery-3.6.0.min.js"></script>

@@ -1,9 +1,19 @@
 <?php
 function get_ratio_data($pdo)
 {
-    $stmt = $pdo->prepare("SELECT r.ratio_id, r.ratio_thick, r.ratio_data, r.ratio_size, r.ratio_gram, r.ratio_inch, u.first_name, r.updated_at 
+    $stmt = $pdo->prepare("SELECT r.ratio_id, r.ratio_thick, r.ratio_data, r.ratio_size, r.ratio_gram, r.ratio_inch, u.first_name, r.updated_users_id , r.updated_at 
                             FROM ratio_data r 
                             LEFT JOIN users u ON r.updated_users_id = u.users_id 
+                            ORDER BY r.ratio_id ASC");
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+function get_ratio_master($pdo)
+{
+    $stmt = $pdo->prepare("SELECT r.ratio_id, r.ratio_thick, r.ratio_data, r.ratio_size, r.ratio_gram, r.ratio_inch, u.first_name, r.updated_users_id, r.updated_at 
+                            FROM ratio_data r 
+                            LEFT JOIN users u ON r.updated_users_id = u.users_id 
+                            WHERE r.ratio_status = 'master'
                             ORDER BY r.ratio_id ASC");
     $stmt->execute();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);

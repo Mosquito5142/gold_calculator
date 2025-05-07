@@ -61,11 +61,11 @@ $(document).ready(function () {
       reader.readAsDataURL(this.files[0]);
 
       // ตรวจสอบขนาดไฟล์
-      if (this.files[0].size > 5 * 1024 * 1024) {
+      if (this.files[0].size > 10 * 1024 * 1024) {
         Swal.fire({
           icon: "error",
           title: "ไฟล์มีขนาดใหญ่เกินไป",
-          text: "กรุณาเลือกไฟล์ขนาดไม่เกิน 5MB",
+          text: "กรุณาเลือกไฟล์ขนาดไม่เกิน 10MB",
         });
         this.value = "";
         $container.hide();
@@ -74,6 +74,8 @@ $(document).ready(function () {
       $container.hide();
     }
   });
+  // แสดงข้อความในปุ่ม
+  $('[data-bs-toggle="tooltip"]').tooltip();
 });
 
 function resetModal() {
@@ -85,7 +87,12 @@ function resetModal() {
   window.imageFileName = "";
   window.hasExistingImage = false;
   $(".detail-row").remove();
-
+  // ล้างคลาสไฮไลท์
+  $(".reference-width, .multi-reference").removeClass(
+    "reference-width multi-reference"
+  );
+  $(".multi-reference-label").remove();
+  $(".reference-explanation").remove();
   // Reset ค่าในแถวค่าคงที่
   $('input[name="pnd_weight_special[]"]:eq(0)').val("-2.6");
   $('input[name="pnd_weight_special[]"]:eq(1)').val("3");
@@ -178,6 +185,8 @@ function addDetailRow() {
                     <select class="form-select type-select" name="pnd_type[]" required style="background-color: #fff9c4;">
                         <option value="" disabled selected>เลือกประเภท</option>
                         <option value="สร้อย">สร้อย</option>
+                        <option value="กำไล">กำไล</option>
+                        <option value="มัลติ">มัลติ</option>
                         <option value="อะไหล่">อะไหล่</option>
                     </select>
                 </div>
@@ -186,7 +195,7 @@ function addDetailRow() {
                     <input type="text" class="form-control" name="pnd_name[]" required style="background-color: #fff9c4;">
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">น้ำหนัก</label>
+                    <label class="form-label">น้ำหนัก (กรัม)</label>
                     <input type="number" class="form-control" name="pnd_weight_grams[]" step="0.01" required style="background-color: #fff9c4;">
                 </div>
                 <div class="col-md-2">
@@ -194,7 +203,7 @@ function addDetailRow() {
                     <input type="number" class="form-control" readonly>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">ความยาว</label>
+                    <label class="form-label">ความยาว (นิ้ว)</label>
                     <input type="number" class="form-control" name="pnd_long_inch[]" step="0.01" style="background-color: #fff9c4;">
                 </div>
             </div>
@@ -277,6 +286,15 @@ function addDetailRow() {
     updateDetailPartsVisibility(detailRow, this.value);
     calculateRatios(); // คำนวณ ratio ใหม่เมื่อเปลี่ยนประเภท
   });
+  // เพิ่ม event listener เฉพาะสำหรับ scale_wire_weight เพื่อรีเซ็ตไฮไลท์
+  row.find('input[name="scale_wire_weight[]"]').on("input", function () {
+    // ล้างคลาสไฮไลท์และคำนวณใหม่
+    $('input[name="scale_wire_weight[]"]').removeClass(
+      "reference-width multi-reference"
+    );
+    $(".multi-reference-label").remove();
+    calculateRatios();
+  });
 
   // เริ่มต้นแสดงตามค่าเริ่มต้น
   updateDetailPartsVisibility(row, row.find(".type-select").val());
@@ -287,20 +305,63 @@ function addDetailRow() {
 }
 // ฟังก์ชันคำนวณ ratio โดยใช้ค่ากว้างของสร้อย
 function calculateRatios() {
+  // ล้างคลาสไฮไลท์ที่อาจมีอยู่เดิม
+  $('input[name="scale_wire_weight[]"]').removeClass(
+    "reference-width multi-reference"
+  );
+  $(".multi-reference-label").remove();
+
+  // หาค่า reference จากมัลติก่อน
   let firstNecklaceWidth = null;
-  $('input[name="scale_wire_weight[]"]').each(function () {
-    const val = parseFloat($(this).val());
-    if (!isNaN(val) && val !== 0) {
-      firstNecklaceWidth = val;
-      return false;
+  let totalMultiWidth = 0;
+  let multiCount = 0;
+  let multiInputs = [];
+
+  $('select[name="pnd_type[]"]').each(function (index) {
+    if ($(this).val() === "มัลติ") {
+      const scaleInput = $('input[name="scale_wire_weight[]"]').eq(index);
+      const val = parseFloat(scaleInput.val());
+      if (!isNaN(val) && val > 0) {
+        totalMultiWidth += val;
+        multiCount++;
+        multiInputs.push(scaleInput);
+      }
     }
   });
 
+  // ใช้ค่าเฉลี่ยของมัลติแทน reference width
+  if (multiCount > 0) {
+    firstNecklaceWidth = totalMultiWidth;
+
+    // เพิ่มไฮไลท์ให้กับช่องกว้างของมัลติทุกอัน
+    multiInputs.forEach(function (input) {
+      input.addClass("multi-reference");
+    });
+  }
+
+  // ถ้ายังไม่มี reference width จากมัลติ ให้ใช้ค่าจากสร้อยหรือกำไลแรก
   if (firstNecklaceWidth === null) {
+    $('select[name="pnd_type[]"]').each(function (index) {
+      if ($(this).val() === "สร้อย" || $(this).val() === "กำไล") {
+        const scaleInput = $('input[name="scale_wire_weight[]"]').eq(index);
+        const val = parseFloat(scaleInput.val());
+        if (!isNaN(val) && val > 0) {
+          firstNecklaceWidth = val;
+          // เพิ่มคลาสไฮไลท์ให้กับช่องกว้างที่เป็นค่าอ้างอิง
+          scaleInput.addClass("reference-width");
+          return false; // หยุด each loop เมื่อเจอค่าแรก
+        }
+      }
+    });
+  }
+
+  // ถ้าไม่มีค่า reference ให้หยุดการคำนวณ
+  if (firstNecklaceWidth === null || firstNecklaceWidth <= 0) {
     $(".parts-ratio-width, .parts-ratio-height, .parts-ratio-thick").text("-");
     return;
   }
 
+  // คำนวณ ratio สำหรับอะไหล่เทียบกับ reference width
   $('input[name="parts_weight[]"]').each(function (index) {
     const val = parseFloat($(this).val());
     const $ratioField = $(".parts-ratio-width").eq(index);
@@ -324,6 +385,9 @@ function calculateRatios() {
       !isNaN(val) && val !== 0 ? (val / firstNecklaceWidth).toFixed(2) : "-"
     );
   });
+
+  // เพิ่มข้อความอธิบายเกี่ยวกับค่าอ้างอิง
+  addReferenceExplanation(firstNecklaceWidth, multiCount > 0);
 }
 // ฟังก์ชันคำนวณ ratio โดยเปรียบเทียบกับค่าแรกของประเภทเดียวกัน
 function calculateRatioForSameType(inputName, ratioClass) {
@@ -360,16 +424,83 @@ function calculateRatioForSameType(inputName, ratioClass) {
 }
 // ฟังก์ชันสำหรับแสดง/ซ่อนฟิลด์ตามประเภท
 function updateDetailPartsVisibility(row, type) {
+  // รีเซ็ต display ของทุกส่วน
+  $(row).find(".necklace-parts").hide();
+  $(row).find(".parts-parts").hide();
+
   if (type === "สร้อย") {
+    // แสดงทุกฟิลด์ของสร้อย
     $(row).find(".necklace-parts").show();
-    $(row).find(".parts-parts").hide();
-    // เคลียร์ค่าในส่วนที่ซ่อน
-    $(row).find(".parts-parts input").val("");
+    $(row).find(".necklace-parts input").prop("required", true);
+    $(row).find(".necklace-parts label:contains('รูลวด')").text("รูลวด");
+    $(row).find(".necklace-parts label:contains('หนา')").first().text("หนา");
+    $(row).find(".necklace-parts label:contains('ไส้')").text("ไส้");
+
+    // รีเซ็ตค่าในส่วนอะไหล่
+    $(row).find(".parts-parts input").val("").prop("required", false);
+  } else if (type === "มัลติ") {
+    // แสดงทุกฟิลด์เหมือนสร้อย แต่มีความหมายต่างกัน
+    $(row).find(".necklace-parts").show();
+    $(row).find(".necklace-parts input").prop("required", true);
+
+    // เปลี่ยนชื่อฟิลด์ให้เหมาะกับมัลติ
+    $(row).find(".necklace-parts label:contains('รูลวด')").text("รูลวด");
+    $(row).find(".necklace-parts label:contains('หนา')").first().text("หนา");
+    $(row).find(".necklace-parts label:contains('ไส้')").text("ไส้");
+    $(row).find(".necklace-parts label:contains('กว้าง')").text("กว้าง(มม.)");
+
+    // เพิ่ม class สำหรับระบุว่าเป็น multi-type
+    $(row).find('input[name="scale_wire_weight[]"]').addClass("multi-wire");
+
+    // รีเซ็ตค่าในส่วนอะไหล่
+    $(row).find(".parts-parts input").val("").prop("required", false);
+  } else if (type === "กำไล") {
+    // แสดงเฉพาะฟิลด์ของกำไล (ใช้ฟิลด์เดียวกับสร้อย)
+    $(row).find(".necklace-parts").show();
+
+    // ซ่อนฟิลด์ที่ไม่ต้องการ
+    $(row)
+      .find(".necklace-parts .col-md-2:has(label:contains('รูลวด'))")
+      .hide();
+    $(row).find(".necklace-parts .col-md-2:has(label:contains('ไส้'))").hide();
+    $(row)
+      .find(".necklace-parts .col-md-2:has(label:contains('หนา'))")
+      .first()
+      .hide();
+
+    // ตั้งค่า required ให้ถูกต้อง
+    $(row)
+      .find(".necklace-parts input[name='wire_hole[]']")
+      .prop("required", false)
+      .val("0");
+    $(row)
+      .find(".necklace-parts input[name='wire_core[]']")
+      .prop("required", false)
+      .val("0");
+    $(row)
+      .find(".necklace-parts input[name='wire_thick[]']")
+      .prop("required", false)
+      .val("0");
+
+    // เปลี่ยนชื่อฟิลด์ให้เหมาะสม
+    $(row).find(".necklace-parts label:contains('กว้าง')").text("กว้าง(มม.)");
+    $(row).find(".necklace-parts label:contains('หนา')").eq(1).text("หนา(มม.)");
+
+    // รีเซ็ตค่าในส่วนอะไหล่
+    $(row).find(".parts-parts input").val("").prop("required", false);
   } else if (type === "อะไหล่") {
-    $(row).find(".necklace-parts").hide();
+    // แสดงเฉพาะฟิลด์ของอะไหล่
     $(row).find(".parts-parts").show();
-    // เคลียร์ค่าในส่วนที่ซ่อน
-    $(row).find(".necklace-parts input").val("");
+    $(row).find(".parts-parts input").prop("required", true);
+
+    // รีเซ็ตค่าในส่วนสร้อย/กำไล
+    $(row).find(".necklace-parts input").val("").prop("required", false);
+  } else {
+    // ถ้าไม่ได้เลือกประเภท ซ่อนทั้งหมด
+    $(row)
+      .find(".necklace-parts input, .parts-parts input")
+      .val("")
+      .prop("required", false);
   }
 }
 
@@ -385,12 +516,126 @@ function showFullImage(src, title) {
 }
 
 function savePercent() {
+  // เพิ่มการตรวจสอบฟิลด์ที่จำเป็น
+  let validationFailed = false;
+  let errorMessage = "";
+
+  // ตรวจสอบฟิลด์ที่จำเป็นของสร้อย กำไล และมัลติ
+  $(".detail-row").each(function () {
+    const type = $(this).find(".type-select").val();
+
+    if (type === "สร้อย" || type === "กำไล" || type === "มัลติ") {
+      const scaleWireWeight = $(this)
+        .find('input[name="scale_wire_weight[]"]')
+        .val();
+      const scaleWireThick = $(this)
+        .find('input[name="scale_wire_thick[]"]')
+        .val();
+      const detailName = $(this).find('input[name="pnd_name[]"]').val();
+
+      // ตรวจสอบว่าค่ากว้างต้องไม่เป็นค่าว่าง
+      if (!scaleWireWeight || scaleWireWeight === "0") {
+        validationFailed = true;
+        errorMessage = `กรุณากรอกค่ากว้าง สำหรับ ${
+          detailName || "รายการ " + type
+        }`;
+        return false; // หยุด each loop
+      }
+
+      // ตรวจสอบว่าค่าหนาต้องไม่เป็นค่าว่าง
+      if (!scaleWireThick || scaleWireThick === "0") {
+        validationFailed = true;
+        errorMessage = `กรุณากรอกค่าหนา สำหรับ ${
+          detailName || "รายการ " + type
+        }`;
+        return false; // หยุด each loop
+      }
+
+      // สำหรับสร้อยและมัลติ จำเป็นต้องมีค่าอื่นๆ ครบถ้วนด้วย
+      if (type === "สร้อย" || type === "มัลติ") {
+        const wireHole = $(this).find('input[name="wire_hole[]"]').val();
+        const wireThick = $(this).find('input[name="wire_thick[]"]').val();
+        const wireCore = $(this).find('input[name="wire_core[]"]').val();
+
+        if (!wireHole || wireHole === "0") {
+          validationFailed = true;
+          errorMessage = `กรุณากรอกค่ารูลวด สำหรับ ${
+            detailName || "รายการ " + type
+          }`;
+          return false; // หยุด each loop
+        }
+
+        if (!wireThick || wireThick === "0") {
+          validationFailed = true;
+          errorMessage = `กรุณากรอกค่าความหนา สำหรับ ${
+            detailName || "รายการ " + type
+          }`;
+          return false; // หยุด each loop
+        }
+
+        if (!wireCore || wireCore === "0") {
+          validationFailed = true;
+          errorMessage = `กรุณากรอกค่าไส้ สำหรับ ${
+            detailName || "รายการ " + type
+          }`;
+          return false; // หยุด each loop
+        }
+      }
+    } else if (type === "อะไหล่") {
+      // ตรวจสอบฟิลด์ที่จำเป็นของอะไหล่
+      const partsWeight = $(this).find('input[name="parts_weight[]"]').val();
+      const partsHeight = $(this).find('input[name="parts_height[]"]').val();
+      const partsThick = $(this).find('input[name="parts_thick[]"]').val();
+      const detailName = $(this).find('input[name="pnd_name[]"]').val();
+
+      if (!partsWeight) {
+        validationFailed = true;
+        errorMessage = `กรุณากรอกค่ากว้าง สำหรับอะไหล่ ${detailName || ""}`;
+        return false;
+      }
+
+      if (!partsHeight) {
+        validationFailed = true;
+        errorMessage = `กรุณากรอกค่าสูง สำหรับอะไหล่ ${detailName || ""}`;
+        return false;
+      }
+
+      if (!partsThick) {
+        validationFailed = true;
+        errorMessage = `กรุณากรอกค่าหนา สำหรับอะไหล่ ${detailName || ""}`;
+        return false;
+      }
+    }
+  });
+
+  if (validationFailed) {
+    Swal.fire({
+      icon: "error",
+      title: "กรุณากรอกข้อมูลให้ครบถ้วน",
+      text: errorMessage,
+    });
+    return;
+  }
+
   // ก่อนตรวจสอบฟอร์ม ให้ลบ required จากฟิลด์ที่ซ่อนอยู่
   $(".detail-row").each(function () {
     const type = $(this).find(".type-select").val();
 
-    if (type === "สร้อย") {
-      // ถ้าเป็นประเภทสร้อย ให้ลบ required จากฟิลด์อะไหล่ที่ซ่อนอยู่
+    if (type === "กำไล") {
+      // ใส่ค่าเริ่มต้นในฟิลด์ที่ซ่อนอยู่
+      if ($(this).find('input[name="wire_hole[]"]').val() === "") {
+        $(this).find('input[name="wire_hole[]"]').val("0");
+      }
+      if ($(this).find('input[name="wire_thick[]"]').val() === "") {
+        $(this).find('input[name="wire_thick[]"]').val("0");
+      }
+      if ($(this).find('input[name="wire_core[]"]').val() === "") {
+        $(this).find('input[name="wire_core[]"]').val("0");
+      }
+    }
+
+    if (type === "สร้อย" || type === "กำไล") {
+      // ถ้าเป็นประเภทสร้อยหรือกำไล ให้ลบ required จากฟิลด์อะไหล่ที่ซ่อนอยู่
       $(this).find(".parts-parts input[required]").prop("required", false);
     } else if (type === "อะไหล่") {
       // ถ้าเป็นประเภทอะไหล่ ให้ลบ required จากฟิลด์สร้อยที่ซ่อนอยู่
@@ -561,22 +806,34 @@ function editPercent(id) {
               .find('input[name="ndp_id[]"]')
               .val(detail.parts.ndp_id || "");
 
-            if (detail.pnd_type === "สร้อย") {
+            if (
+              detail.pnd_type === "สร้อย" ||
+              detail.pnd_type === "กำไล" ||
+              detail.pnd_type === "มัลติ"
+            ) {
+              // สำหรับทั้งสร้อย, กำไล และมัลติ ใช้ฟิลด์เดียวกัน
               $(row)
                 .find('input[name="wire_hole[]"]')
-                .val(detail.parts.wire_hole || "");
+                .val(detail.parts.wire_hole || "0");
               $(row)
                 .find('input[name="wire_thick[]"]')
-                .val(detail.parts.wire_thick || "");
+                .val(detail.parts.wire_thick || "0");
               $(row)
                 .find('input[name="wire_core[]"]')
-                .val(detail.parts.wire_core || "");
+                .val(detail.parts.wire_core || "0");
               $(row)
                 .find('input[name="scale_wire_weight[]"]')
                 .val(detail.parts.scale_wire_weight || "");
               $(row)
                 .find('input[name="scale_wire_thick[]"]')
                 .val(detail.parts.scale_wire_thick || "");
+
+              // เพิ่ม class multi-wire เมื่อเป็นประเภทมัลติ
+              if (detail.pnd_type === "มัลติ") {
+                $(row)
+                  .find('input[name="scale_wire_weight[]"]')
+                  .addClass("multi-wire");
+              }
             } else if (detail.pnd_type === "อะไหล่") {
               $(row)
                 .find('input[name="parts_weight[]"]')
@@ -660,6 +917,44 @@ function viewPercent(id) {
       return;
     }
 
+    // กำหนดค่าให้กับตัวแปร details เพื่อป้องกันข้อผิดพลาด
+    const details = data.details || [];
+    const specialDetails = data.specialDetails || [];
+
+    // ระบุประเภทและค่าอ้างอิง
+    let referenceWidth = 0;
+    let referenceType = ""; // สำหรับเก็บประเภทของค่าอ้างอิง
+    let hasMultiType = false;
+    let totalMultiWidth = 0;
+    let multiItems = [];
+
+    // ตรวจสอบว่ามีรายการประเภทมัลติหรือไม่
+    details.forEach(function (detail) {
+      if (detail.pnd_type === "มัลติ" && detail.parts?.scale_wire_weight) {
+        hasMultiType = true;
+        totalMultiWidth += parseFloat(detail.parts.scale_wire_weight);
+        multiItems.push(detail);
+      }
+    });
+
+    // ถ้ามีรายการมัลติ ใช้ความกว้างรวมของมัลติเป็นค่าอ้างอิง
+    if (hasMultiType && totalMultiWidth > 0) {
+      referenceWidth = totalMultiWidth;
+      referenceType = "มัลติ";
+    } else {
+      // ถ้าไม่มีมัลติ ค้นหาสร้อยหรือกำไลอันแรก
+      for (const detail of details) {
+        if (
+          (detail.pnd_type === "สร้อย" || detail.pnd_type === "กำไล") &&
+          detail.parts?.scale_wire_weight
+        ) {
+          referenceWidth = parseFloat(detail.parts.scale_wire_weight);
+          referenceType = detail.pnd_type;
+          break;
+        }
+      }
+    }
+
     let html = `
     <div class="row mb-3">
         <div class="col-md-4 text-center">
@@ -694,20 +989,20 @@ function viewPercent(id) {
 
     // Calculate total weight for percentage calculation
     let totalWeight = 0;
-    if (data.specialDetails?.length) {
-      data.specialDetails.forEach(
+    if (specialDetails?.length) {
+      specialDetails.forEach(
         (d) => (totalWeight += parseFloat(d.pnd_weight_grams) || 0)
       );
     }
-    if (data.details?.length) {
-      data.details.forEach(
+    if (details?.length) {
+      details.forEach(
         (d) => (totalWeight += parseFloat(d.pnd_weight_grams) || 0)
       );
     }
 
     // รายการพิเศษ (special items)
-    if (data.specialDetails?.length) {
-      data.specialDetails.forEach(function (d) {
+    if (specialDetails?.length) {
+      specialDetails.forEach(function (d) {
         const percent = (
           ((parseFloat(d.pnd_weight_grams) || 0) / totalWeight) *
           100
@@ -723,8 +1018,8 @@ function viewPercent(id) {
     }
 
     // รายการปกติ (regular items)
-    if (data.details?.length) {
-      data.details.forEach(function (d) {
+    if (details?.length) {
+      details.forEach(function (d) {
         const percent = (
           ((parseFloat(d.pnd_weight_grams) || 0) / totalWeight) *
           100
@@ -749,20 +1044,22 @@ function viewPercent(id) {
 
     html += `</tbody></table></div>`;
 
-    // ค้นหาค่า reference สำหรับการคำนวณ ratio
-    let referenceWidth = null;
-    if (data.details?.length) {
-      // หาค่ากว้างแรกของสร้อย
-      for (const d of data.details) {
-        if (d.pnd_type === "สร้อย" && d.parts?.scale_wire_weight) {
-          referenceWidth = parseFloat(d.parts.scale_wire_weight);
-          break;
-        }
-      }
-    }
-
     // Display ratio information
-    if (data.details?.some((d) => d.parts)) {
+    if (details?.some((d) => d.parts)) {
+      html += `
+      <div class="mt-3 mb-3 alert alert-info">
+        <i class="fas fa-info-circle"></i> 
+        ${
+          referenceType === "มัลติ"
+            ? `ค่าอ้างอิงคำนวณจากความกว้างรวมของมัลติ (${referenceWidth.toFixed(
+                2
+              )} มม.)`
+            : `ค่าอ้างอิงคำนวณจากความกว้างของ${referenceType}อันแรก (${referenceWidth.toFixed(
+                2
+              )} มม.)`
+        }
+      </div>`;
+
       html += `<h6 class="mt-4">ข้อมูลสัดส่วน</h6>
         <div class="table-responsive">
             <table class="table table-bordered">
@@ -777,42 +1074,135 @@ function viewPercent(id) {
                 <tbody>`;
 
       // First show necklace items
-      const necklaceItems = data.details.filter(
-        (d) => d.pnd_type === "สร้อย" && d.parts
-      );
+      const necklaceItems = details.filter((d) => d.pnd_type === "สร้อย");
       if (necklaceItems.length > 0) {
         html += `<tr class="table-secondary"><td colspan="4" class="fw-bold">สร้อย</td></tr>`;
-
         necklaceItems.forEach(function (d) {
-          const wireWidth = parseFloat(d.parts.scale_wire_weight) || 0;
-          const wireThick = parseFloat(d.parts.scale_wire_thick) || 0;
+          const wireWidth = parseFloat(d.parts?.scale_wire_weight) || 0;
+          const wireThick = parseFloat(d.parts?.scale_wire_thick) || 0;
+
+          // เช็คว่าเป็นค่าอ้างอิงหรือไม่
+          const isReferenceWidth =
+            referenceType === "สร้อย" && wireWidth === referenceWidth;
 
           html += `<tr>
                 <td>${d.pnd_name}</td>
                 <td>สร้อย</td>
                 <td>
-                    <div>รูลวด: ${d.parts.wire_hole || "-"}</div>
-                    <div>หนา: ${d.parts.wire_thick || "-"}</div>
-                    <div>ไส้: ${d.parts.wire_core || "-"}</div>
-                    <div>กว้าง: ${d.parts.scale_wire_weight || "-"} มม.</div>
-                    <div>หนา: ${d.parts.scale_wire_thick || "-"} มม.</div>
+                    <div>รูลวด: ${d.parts?.wire_hole || "-"}</div>
+                    <div>หนา: ${d.parts?.wire_thick || "-"}</div>
+                    <div>ไส้: ${d.parts?.wire_core || "-"}</div>
+                    <div class="${
+                      isReferenceWidth ? "fw-bold text-primary" : ""
+                    }">
+                        กว้าง: ${d.parts?.scale_wire_weight || "-"} มม.
+                        ${
+                          isReferenceWidth
+                            ? '<span class="badge bg-info ms-2">ค่าอ้างอิง</span>'
+                            : ""
+                        }
+                    </div>
+                    <div>หนา: ${d.parts?.scale_wire_thick || "-"} มม.</div>
                 </td>
                 <td></td>
             </tr>`;
         });
       }
 
-      // Then show parts items
-      const partsItems = data.details.filter(
+      // Show bracelet items
+      const braceletItems = details.filter((d) => d.pnd_type === "กำไล");
+      if (braceletItems.length > 0) {
+        html += `<tr class="table-secondary"><td colspan="4" class="fw-bold">กำไล</td></tr>`;
+
+        braceletItems.forEach(function (d) {
+          const wireWidth = parseFloat(d.parts?.scale_wire_weight) || 0;
+
+          // เช็คว่าเป็นค่าอ้างอิงหรือไม่
+          const isReferenceWidth =
+            referenceType === "กำไล" && wireWidth === referenceWidth;
+
+          html += `<tr>
+            <td>${d.pnd_name}</td>
+            <td>กำไล</td>
+            <td>
+              <div class="${isReferenceWidth ? "fw-bold text-primary" : ""}">
+                กว้าง: ${d.parts?.scale_wire_weight || "-"} มม.
+                ${
+                  isReferenceWidth
+                    ? '<span class="badge bg-info ms-2">ค่าอ้างอิง</span>'
+                    : ""
+                }
+              </div>
+              <div>หนา: ${d.parts?.scale_wire_thick || "-"} มม.</div>
+            </td>
+            <td></td>
+          </tr>`;
+        });
+      }
+
+      // Show multi items
+      const multiItems = details.filter((d) => d.pnd_type === "มัลติ");
+      if (multiItems.length > 0) {
+        // คำนวณความกว้างรวมของมัลติ
+        let totalMultiWidth = 0;
+        multiItems.forEach((d) => {
+          if (d.parts?.scale_wire_weight) {
+            totalMultiWidth += parseFloat(d.parts.scale_wire_weight);
+          }
+        });
+
+        html += `<tr class="table-secondary"><td colspan="4" class="fw-bold">มัลติ 
+          ${
+            referenceType === "มัลติ"
+              ? '<span class="badge bg-info">ใช้ความกว้างรวมเป็นค่าอ้างอิง</span>'
+              : ""
+          }
+        </td></tr>`;
+
+        multiItems.forEach(function (d) {
+          const wireWidth = parseFloat(d.parts?.scale_wire_weight) || 0;
+
+          html += `<tr>
+            <td>${d.pnd_name}</td>
+            <td>มัลติ</td>
+            <td>
+                <div>รูลวด: ${d.parts?.wire_hole || "-"}</div>
+                <div>หนา: ${d.parts?.wire_thick || "-"}</div>
+                <div>ไส้: ${d.parts?.wire_core || "-"}</div>
+                <div class="${
+                  referenceType === "มัลติ" ? "fw-bold text-primary" : ""
+                }">
+                    กว้าง: ${d.parts?.scale_wire_weight || "-"} มม.
+                </div>
+                <div>หนา: ${d.parts?.scale_wire_thick || "-"} มม.</div>
+            </td>
+            <td></td>
+          </tr>`;
+        });
+
+        // แสดงค่ารวมความกว้างมัลติ
+        if (referenceType === "มัลติ") {
+          html += `<tr class="table-info">
+              <td colspan="2" class="text-end fw-bold">ความกว้างรวมของมัลติ</td>
+              <td class="fw-bold text-primary">${totalMultiWidth.toFixed(
+                2
+              )} มม.</td>
+              <td></td>
+          </tr>`;
+        }
+      }
+
+      // Show parts items with updated ratio calculation
+      const partsItems = details.filter(
         (d) => d.pnd_type === "อะไหล่" && d.parts
       );
       if (partsItems.length > 0) {
         html += `<tr class="table-secondary"><td colspan="4" class="fw-bold">อะไหล่</td></tr>`;
 
         partsItems.forEach(function (d) {
-          const partsWidth = parseFloat(d.parts.parts_weight) || 0;
-          const partsHeight = parseFloat(d.parts.parts_height) || 0;
-          const partsThick = parseFloat(d.parts.parts_thick) || 0;
+          const partsWidth = parseFloat(d.parts?.parts_weight) || 0;
+          const partsHeight = parseFloat(d.parts?.parts_height) || 0;
+          const partsThick = parseFloat(d.parts?.parts_thick) || 0;
 
           let ratioInfo = "";
           if (referenceWidth && partsWidth) {
@@ -834,9 +1224,9 @@ function viewPercent(id) {
                 <td>${d.pnd_name}</td>
                 <td>อะไหล่</td>
                 <td>
-                    <div>กว้าง: ${d.parts.parts_weight || "-"} มม.</div>
-                    <div>สูง: ${d.parts.parts_height || "-"} มม.</div>
-                    <div>หนา: ${d.parts.parts_thick || "-"} มม.</div>
+                    <div>กว้าง: ${d.parts?.parts_weight || "-"} มม.</div>
+                    <div>สูง: ${d.parts?.parts_height || "-"} มม.</div>
+                    <div>หนา: ${d.parts?.parts_thick || "-"} มม.</div>
                 </td>
                 <td>${ratioInfo || "-"}</td>
             </tr>`;
@@ -846,39 +1236,71 @@ function viewPercent(id) {
       html += `</tbody></table></div>`;
     }
 
-    let firstNecklaceWidth = null;
-    if (data.details?.length) {
-      for (const detail of data.details) {
-        if (detail.pnd_type === "สร้อย" && detail.parts?.scale_wire_weight) {
-          firstNecklaceWidth = parseFloat(detail.parts.scale_wire_weight);
-          break;
-        }
-      }
-    }
-
     // สร้างลิงค์พร้อมพารามิเตอร์ทั้งหมด
     let calculationUrl = `percent_necklace.php?pn_id=${id}&baht=${(
       parseFloat(data.percent.pn_grams) / 15.2
     ).toFixed(2)}&grams=${data.percent.pn_grams}`;
 
     // เพิ่มพารามิเตอร์ความกว้างถ้ามีค่า
-    if (firstNecklaceWidth !== null) {
-      calculationUrl += `&width=${firstNecklaceWidth}`;
+    if (referenceWidth !== null && referenceWidth > 0) {
+      calculationUrl += `&width=${referenceWidth}`;
     }
 
     $("#percentViewFooter").html(`
+      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
         <a href="${calculationUrl}" class="btn btn-success">
             <i class="fas fa-calculator"></i> ไปหน้าคำนวน
         </a>
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
     `);
     $("#percentViewContent").html(html);
-    $("#percentViewModal").modal("show");
+
+    try {
+      const modalElement = document.getElementById("percentViewModal");
+      if (!modalElement) {
+        console.error("ไม่พบ Element ของ percentViewModal");
+        return;
+      }
+
+      const modalInstance = new bootstrap.Modal(modalElement);
+      modalInstance.show();
+    } catch (error) {
+      console.error("เกิดข้อผิดพลาดเมื่อพยายามแสดง Modal:", error);
+
+      // ทางเลือกสำรองในกรณีที่การสร้าง Modal แบบปกติล้มเหลว
+      $("#percentViewModal").modal("show");
+    }
   }).fail(function (jqXHR, textStatus, errorThrown) {
+    console.error("Ajax Error:", jqXHR, textStatus, errorThrown);
     Swal.fire({
       icon: "error",
       title: "เกิดข้อผิดพลาด",
       text: errorThrown || "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้",
+      footer: `<small>รายละเอียดข้อผิดพลาด: ${textStatus}</small>`,
     });
   });
+}
+function addReferenceExplanation(referenceWidth, isMultiReference) {
+  // ลบคำอธิบายเก่า (ถ้ามี)
+  $(".reference-explanation").remove();
+
+  if (!referenceWidth) return;
+
+  // สร้างคำอธิบายใหม่
+  const explanation = `
+    <div class="reference-explanation mt-2 mb-3 text-info small">
+      <i class="fas fa-info-circle"></i> 
+      ${
+        isMultiReference
+          ? `ค่าอ้างอิงคำนวณจากความกว้างรวมของมัลติ (${referenceWidth.toFixed(
+              2
+            )} มม.)`
+          : `ค่าอ้างอิงคำนวณจากความกว้างของสร้อยหรือกำไลอันแรก (${referenceWidth.toFixed(
+              2
+            )} มม.)`
+      }
+    </div>
+  `;
+
+  // เพิ่มคำอธิบายลงในหน้าเว็บ
+  $("#detailsContainer").after(explanation);
 }

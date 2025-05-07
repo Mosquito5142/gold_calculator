@@ -28,6 +28,9 @@ try {
     // ใช้ค่าน้ำหนักที่ผู้ใช้กรอกแทนค่าเดิม
     $grams = !empty($_POST['pn_grams']) ? $_POST['pn_grams'] : $original['pn_grams'];
 
+    // เพิ่มชื่อต้นฉบับในวงเล็บ
+    $name_with_origin = $_POST['pn_name'] . ' (สำเนาของ ' . $original['pn_name'] . ')';
+
     // Create new record with new name and set status to 'copy'
     $sql = "INSERT INTO percent_necklace (pn_name, pn_grams, users_id, updated_at, pn_status) 
             VALUES (:name, :grams, :user_id, NOW(), 'copy')";
@@ -48,7 +51,7 @@ try {
     }
 
     $stmt->execute([
-        'name' => $_POST['pn_name'] . ' (สำเนาของ ' . $original['pn_name'] . ')',
+        'name' => $name_with_origin, // ใช้ชื่อที่มีวงเล็บเพิ่มเข้ามา
         'grams' => $grams,
         'user_id' => $userId
     ]);
@@ -58,17 +61,52 @@ try {
     // เก็บค่าความกว้างสร้อยที่ผู้ใช้กรอก (ถ้ามี)
     $custom_scale_wire_weight = !empty($_POST['custom_scale_wire_weight']) ? floatval($_POST['custom_scale_wire_weight']) : 0;
 
-    // เก็บค่า reference scale_wire_weight เดิม
-    $reference_scale = 0;
+    // ดึงข้อมูลรายละเอียดของข้อมูลต้นฉบับ
     $details = get_percent_necklace_detail($pdo, $original_id);
-    $total_weight_original = 0;
 
-    // คำนวณน้ำหนักรวมของข้อมูลเดิมและหาค่าความกว้างอ้างอิง
+    // ตรวจสอบและจัดการกับกรณีประเภทมัลติ
+    $has_multi_type = false;
+    $total_multi_width = 0;
+    $multi_items_count = 0;
+    $original_scale_wire_weight = 0;
+
+    // ค้นหารายการประเภทมัลติและคำนวณความกว้างรวม
+    foreach ($details as $detail) {
+        if ($detail['pnd_type'] === 'มัลติ') {
+            $has_multi_type = true;
+            if (!empty($detail['scale_wire_weight'])) {
+                $total_multi_width += floatval($detail['scale_wire_weight']);
+                $multi_items_count++;
+            }
+        } elseif (($detail['pnd_type'] === 'สร้อย' || $detail['pnd_type'] === 'กำไล') && $original_scale_wire_weight == 0) {
+            // เก็บความกว้างอ้างอิงจากสร้อยหรือกำไลรายการแรก (ถ้ายังไม่มีค่า)
+            $original_scale_wire_weight = floatval($detail['scale_wire_weight']);
+        }
+    }
+
+    // กำหนดค่าความกว้างอ้างอิงสำหรับการคำนวณสัดส่วนอะไหล่
+    $reference_scale_width = 0;
+
+    // ถ้ามีรายการมัลติ ใช้ความกว้างรวมของมัลติเป็นค่าอ้างอิง
+    if ($has_multi_type && $total_multi_width > 0) {
+        $reference_scale_width = $total_multi_width;
+    }
+    // ถ้าไม่มีมัลติ ใช้ค่าความกว้างของสร้อยหรือกำไล
+    else if ($original_scale_wire_weight > 0) {
+        $reference_scale_width = $original_scale_wire_weight;
+    }
+
+    // ถ้าผู้ใช้กรอกความกว้างใหม่ ใช้ค่าที่ผู้ใช้กรอกแทน
+    $new_reference_width = $custom_scale_wire_weight > 0 ? $custom_scale_wire_weight : $reference_scale_width;
+
+    // คำนวณอัตราส่วนการเปลี่ยนแปลงความกว้าง (สำหรับปรับขนาดมัลติ)
+    $width_ratio = $reference_scale_width > 0 && $new_reference_width > 0 ?
+        $new_reference_width / $reference_scale_width : 1;
+
+    // เก็บค่าความกว้างสร้อยที่ผู้ใช้กรอก (ถ้ามี)
+    $total_weight_original = 0;
     foreach ($details as $detail) {
         $total_weight_original += floatval($detail['pnd_weight_grams']);
-        if ($detail['pnd_type'] === 'สร้อย' && $reference_scale == 0) {
-            $reference_scale = floatval($detail['scale_wire_weight']);
-        }
     }
 
     // ถ้ามีน้ำหนักเดิมแล้วและมีการกรอกน้ำหนักใหม่ จะคำนวณตามสัดส่วน
@@ -76,15 +114,15 @@ try {
 
     // สร้าง array เก็บข้อมูล pnd_id -> อัตราส่วนของอะไหล่เทียบกับความกว้างสร้อยเดิม
     $part_ratios = [];
-    
-    // คำนวณอัตราส่วนของอะไหล่เทียบกับความกว้างสร้อยเดิม
-    if ($reference_scale > 0) {
+
+    // คำนวณอัตราส่วนของอะไหล่เทียบกับความกว้างอ้างอิงเดิม
+    if ($reference_scale_width > 0) {
         foreach ($details as $detail) {
             if ($detail['pnd_type'] === 'อะไหล่') {
                 $part_ratios[$detail['pnd_id']] = [
-                    'width_ratio' => floatval($detail['parts_weight']) / $reference_scale,
-                    'height_ratio' => floatval($detail['parts_height']) / $reference_scale,
-                    'thick_ratio' => floatval($detail['parts_thick']) / $reference_scale
+                    'width_ratio' => floatval($detail['parts_weight']) / $reference_scale_width,
+                    'height_ratio' => floatval($detail['parts_height']) / $reference_scale_width,
+                    'thick_ratio' => floatval($detail['parts_thick']) / $reference_scale_width
                 ];
             }
         }
@@ -126,16 +164,29 @@ try {
                 $parts_height = $parts['parts_height'];
                 $parts_thick = $parts['parts_thick'];
 
-                // ถ้าเป็นสร้อยและมีการกรอกความกว้างใหม่
-                if ($detail['pnd_type'] === 'สร้อย' && $custom_scale_wire_weight > 0) {
-                    $scale_wire_weight = $custom_scale_wire_weight;
+                // จัดการกับความกว้างมัลติและสร้อยหรือกำไล
+                if ($detail['pnd_type'] === 'มัลติ' || $detail['pnd_type'] === 'สร้อย' || $detail['pnd_type'] === 'กำไล') {
+                    if ($custom_scale_wire_weight > 0) {
+                        // ถ้าเป็นประเภทมัลติ คำนวณความกว้างใหม่ตามอัตราส่วน
+                        if ($detail['pnd_type'] === 'มัลติ') {
+                            $scale_wire_weight = floatval($parts['scale_wire_weight']) * $width_ratio;
+                        } else {
+                            // สำหรับสร้อยหรือกำไล ใช้ค่าที่ผู้ใช้กำหนดโดยตรง
+                            $scale_wire_weight = $custom_scale_wire_weight;
+                        }
+
+                        // ปรับความหนาตามสัดส่วนเดียวกัน
+                        if (!empty($parts['scale_wire_thick'])) {
+                            $scale_wire_thick = floatval($parts['scale_wire_thick']) * $width_ratio;
+                        }
+                    }
                 }
                 // ถ้าเป็นอะไหล่และมีการกรอกความกว้างใหม่ - คำนวณค่าจากอัตราส่วน
-                else if ($detail['pnd_type'] === 'อะไหล่' && $custom_scale_wire_weight > 0 && isset($part_ratios[$detail['pnd_id']])) {
+                else if ($detail['pnd_type'] === 'อะไหล่' && $new_reference_width > 0 && isset($part_ratios[$detail['pnd_id']])) {
                     $ratios = $part_ratios[$detail['pnd_id']];
-                    $parts_weight = $ratios['width_ratio'] * $custom_scale_wire_weight;
-                    $parts_height = $ratios['height_ratio'] * $custom_scale_wire_weight;
-                    $parts_thick = $ratios['thick_ratio'] * $custom_scale_wire_weight;
+                    $parts_weight = $ratios['width_ratio'] * $new_reference_width;
+                    $parts_height = $ratios['height_ratio'] * $new_reference_width;
+                    $parts_thick = $ratios['thick_ratio'] * $new_reference_width;
                 }
 
                 $stmt = $pdo->prepare("INSERT INTO necklace_detail_parts 

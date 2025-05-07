@@ -236,6 +236,35 @@ function calculate_percent($total, $part)
                 max-height: none !important;
             }
         }
+
+        /* เพิ่มเข้าไปในส่วน style ของไฟล์ percent_necklace.php */
+        tr.multi-type td {
+            background-color: #e8eaf6 !important;
+            /* สีฟ้าอ่อน */
+        }
+
+        .reference-width-marker {
+            position: relative;
+        }
+
+        .reference-width-marker::after {
+            content: "⭐";
+            position: absolute;
+            right: -5px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.8rem;
+            color: #ff9800;
+        }
+
+        /* สไตล์สำหรับหมายเหตุ ratio */
+        .ratio-note {
+            background-color: #f5f5f5;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 
@@ -282,10 +311,17 @@ function calculate_percent($total, $part)
                                                 <select name="pn_id" id="select_necklace_name" class="form-select select2" onchange="this.form.submit()">
                                                     <option value="">-- เลือกสร้อย --</option>
                                                     <?php foreach ($percent_necklaces as $necklace) : ?>
-                                                        <?php $updated_date = date('d/m/Y', strtotime($necklace['updated_at']));
+                                                        <?php
+                                                        $updated_date = date('d/m/Y', strtotime($necklace['updated_at']));
+                                                        // แสดงชื่อสั้น ๆ บนมือถือ
+                                                        $short_name = $necklace['pn_name'];
+                                                        // ชื่อเต็มสำหรับ data-full-name
+                                                        $full_name = $necklace['pn_name'] . ' ' . ($necklace['first_name'] ?? 'ไม่ระบุ') . ' (' . $updated_date . ')';
                                                         ?>
-                                                        <option value="<?php echo $necklace['pn_id']; ?>" <?php echo ($selected_pn_id == $necklace['pn_id']) ? 'selected' : ''; ?>>
-                                                            <?php echo $necklace['pn_name']; ?> <?php echo $necklace['first_name'] ?? 'ไม่ระบุ'; ?> (<?php echo $updated_date; ?>)
+                                                        <option value="<?php echo $necklace['pn_id']; ?>"
+                                                            <?php echo ($selected_pn_id == $necklace['pn_id']) ? 'selected' : ''; ?>
+                                                            data-full-name="<?php echo htmlspecialchars($full_name); ?>">
+                                                            <?php echo $short_name; ?>
                                                         </option>
                                                     <?php endforeach; ?>
                                                 </select>
@@ -375,13 +411,29 @@ function calculate_percent($total, $part)
                                                             <td><?php echo $total_length > 0 ? number_format($total_length, 2) : '-'; ?></td>
                                                         </tr>
                                                         <?php
+                                                        // เก็บค่า scale_wire_weight ของ pnd_type ที่เป็น "สร้อย" หรือ "มัลติ"
                                                         $scale_wire_weight = 0;
+                                                        $total_multi_width = 0;
+                                                        $multi_count = 0;
 
-                                                        // เก็บค่า scale_wire_weight ของ pnd_type ที่เป็น "สร้อย"
+                                                        // ตรวจสอบประเภทมัลติก่อน
                                                         foreach ($necklace_details as $detail) {
-                                                            if ($detail['pnd_type'] === 'สร้อย') {
-                                                                $scale_wire_weight = floatval($detail['scale_wire_weight']);
-                                                                break;
+                                                            if ($detail['pnd_type'] === 'มัลติ') {
+                                                                $total_multi_width += floatval($detail['scale_wire_weight']);
+                                                                $multi_count++;
+                                                            }
+                                                        }
+
+                                                        // ใช้ความกว้างรวมของมัลติถ้ามี
+                                                        if ($multi_count > 0) {
+                                                            $scale_wire_weight = $total_multi_width;
+                                                        } else {
+                                                            // ถ้าไม่มีมัลติ ให้ใช้ค่าจากสร้อย
+                                                            foreach ($necklace_details as $detail) {
+                                                                if ($detail['pnd_type'] === 'สร้อย') {
+                                                                    $scale_wire_weight = floatval($detail['scale_wire_weight']);
+                                                                    break;
+                                                                }
                                                             }
                                                         }
 
@@ -494,8 +546,11 @@ function calculate_percent($total, $part)
                                                 <!-- เพิ่มในส่วน ratioResult -->
                                                 <div class="mt-4" id="ratioResult" style="display:none;">
                                                     <div class="mb-4">
-                                                        <h4 class="text-primary fw-bold py-2" style="background:#e3f2fd;border-radius:8px;">
-                                                            <i class="fas fa-ruler-combined me-2"></i>ผลการคำนวณ Scale Wire Weight
+                                                        <h4 class="text-primary fw-bold py-2 d-flex align-items-center justify-content-between" style="background:#e3f2fd;border-radius:8px;">
+                                                            <span class="ms-2"><i class="fas fa-ruler-combined me-2"></i>ผลการคำนวณ Scale Wire Weight</span>
+                                                            <button type="button" class="btn btn-outline-primary btn-sm me-2" id="dimensionHelpBtn">
+                                                                <i class="fas fa-question-circle me-1"></i> วิธีวัดขนาด
+                                                            </button>
                                                         </h4>
                                                     </div>
                                                     <div class="table-responsive">
@@ -542,6 +597,69 @@ function calculate_percent($total, $part)
             </div>
         </div>
     </div>
+    <!-- Modal แสดงรูปอธิบายขนาด กว้าง สูง หนา -->
+    <div class="modal fade" id="dimensionModal" tabindex="-1" aria-labelledby="dimensionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="dimensionModalLabel">วิธีวัดขนาด กว้าง สูง และหนา</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-150">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">กว้าง × สูง</h5>
+                                </div>
+                                <div class="card-body text-center d-flex align-items-center justify-content-center" style="height: 400px; overflow: hidden;">
+                                    <img src="uploads/img/กว้างสูง.jpg" class="img-fluid rounded" alt="กว้าง × สูง" style="max-height: 400px; width: auto; object-fit: contain;">
+                                </div>
+                                <div class="card-footer bg-light">
+                                    <p class="mb-0 small">
+                                        <i class="fas fa-info-circle text-primary me-1"></i>
+                                        มุมมองด้านหน้า แสดงความกว้างและความสูงของอะไหล่
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-150">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">สูง × หนา</h5>
+                                </div>
+                                <div class="card-body text-center d-flex align-items-center justify-content-center" style="height: 400px; overflow: hidden;">
+                                    <img src="uploads/img/หนาสูง.jpg" class="img-fluid rounded" alt="สูง × หนา" style="max-height: 400px; width: auto; object-fit: contain;">
+                                </div>
+                                <div class="card-footer bg-light">
+                                    <p class="mb-0 small">
+                                        <i class="fas fa-info-circle text-primary me-1"></i>
+                                        มุมมองด้านข้าง แสดงความสูงและความหนาของอะไหล่
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <h5><i class="fas fa-lightbulb me-2"></i>คำอธิบายเพิ่มเติม</h5>
+                                <ul class="mb-0">
+                                    <li><strong>ความกว้าง (Width):</strong> วัดจากด้านซ้ายไปขวาของอะไหล่ (แนวนอน)</li>
+                                    <li><strong>ความสูง (Height):</strong> วัดจากด้านบนลงล่างของอะไหล่ (แนวตั้ง)</li>
+                                    <li><strong>ความหนา (Thickness):</strong> วัดความลึกจากด้านหน้าไปด้านหลังของอะไหล่</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer d-flex justify-content-end">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="assets/js/jquery-3.6.0.min.js"></script>
     <script src="assets/js/feather.min.js"></script>
     <script src="assets/js/jquery.slimscroll.min.js"></script>
@@ -576,6 +694,10 @@ function calculate_percent($total, $part)
                 $('#pn_grams').trigger('input');
                 $('#custom_scale_wire_weight').trigger('input');
             }
+            // แสดง Modal เมื่อคลิกที่ปุ่ม
+            $("#dimensionHelpBtn").on('click', function() {
+                $("#dimensionModal").modal('show');
+            });
         });
         <?php if (!empty($necklace_details)) : ?>
             // ฟังก์ชั่นสำหรับสร้างแถวรายละเอียดจากข้อมูล PHP
@@ -610,17 +732,34 @@ function calculate_percent($total, $part)
                 return rows;
             }
 
-            // ฟังก์ชั่นสำหรับสร้างแถวข้อมูลอัตราส่วน
+            // แก้ไขฟังก์ชัน generateRatioRows เพื่อให้รองรับประเภทมัลติ
             function generateRatioRows(scale_wire_weight) {
                 let rows = '';
 
                 <?php
                 // เก็บค่า scale_wire_weight เดิมจากฐานข้อมูล (ความกว้างเดิมของลวด)
                 $original_scale_wire_weight = 0;
+                $total_multi_width = 0;
+                $multi_count = 0;
+
+                // ตรวจสอบประเภทมัลติก่อน
                 foreach ($necklace_details as $detail) {
-                    if ($detail['pnd_type'] === 'สร้อย') {
-                        $original_scale_wire_weight = floatval($detail['scale_wire_weight']);
-                        break;
+                    if ($detail['pnd_type'] === 'มัลติ') {
+                        $total_multi_width += floatval($detail['scale_wire_weight']);
+                        $multi_count++;
+                    }
+                }
+
+                // ใช้ความกว้างรวมของมัลติถ้ามี
+                if ($multi_count > 0) {
+                    $original_scale_wire_weight = $total_multi_width;
+                } else {
+                    // ถ้าไม่มีมัลติ ให้ใช้ค่าจากสร้อยหรือกำไล
+                    foreach ($necklace_details as $detail) {
+                        if ($detail['pnd_type'] === 'สร้อย' || $detail['pnd_type'] === 'กำไล') {
+                            $original_scale_wire_weight = floatval($detail['scale_wire_weight']);
+                            break;
+                        }
                     }
                 }
                 ?>
@@ -648,79 +787,82 @@ function calculate_percent($total, $part)
                         const new_height_<?php echo $detail['pnd_id']; ?> = ratio_height_<?php echo $detail['pnd_id']; ?> * scale_wire_weight;
                         const new_thick_<?php echo $detail['pnd_id']; ?> = ratio_thick_<?php echo $detail['pnd_id']; ?> * scale_wire_weight;
 
-                        // สร้างแถวหลักพร้อมปุ่มแสดง/ซ่อนภาพ
+                        // สร้างแถวข้อมูล
                         rows += `
-                        <tr class="text-center part-row" id="row_${<?php echo $detail['pnd_id']; ?>}">
-                            <td>${'<?php echo $detailType; ?>'}</td>
-                            <td>${'<?php echo $detailName; ?>'}</td>
-                            <td>${new_width_<?php echo $detail['pnd_id']; ?>.toFixed(2)}</td>
-                            <td>${new_height_<?php echo $detail['pnd_id']; ?>.toFixed(2)}</td>
-                            <td>${new_thick_<?php echo $detail['pnd_id']; ?>.toFixed(2)}</td>
-                            <td>${ratio_width_<?php echo $detail['pnd_id']; ?>.toFixed(2)}</td>
-                            <td>${ratio_height_<?php echo $detail['pnd_id']; ?>.toFixed(2)}</td>
-                            <td>${ratio_thick_<?php echo $detail['pnd_id']; ?>.toFixed(2)}</td>
-                            <td>
-                                <button class="btn btn-sm btn-info toggle-vis-btn" data-part-id="${<?php echo $detail['pnd_id']; ?>}">
-                                    <i class="fas fa-eye"></i> ดูภาพ
-                                </button>
-                            </td>
-                        </tr>
-                        
-                        <!-- แถวสำหรับแสดงภาพ (ซ่อนไว้เริ่มต้น) -->
-                        <tr class="visualization-row" id="vis_row_${<?php echo $detail['pnd_id']; ?>}" style="display: none;">
-                            <td colspan="9" class="p-0">
-                                <div class="visualization-container p-3 border-top">
-                                    <div class="row">
-                                        <!-- มุมมองที่ 1: กว้าง x สูง -->
-                                        <div class="col-md-6 mt-5">
-                                            <div class="visualization-title">มุมมองที่ 1: กว้าง × สูง</div>
-                                            <div class="wire-size-visualization">
-                                                <div class="mb-2 text-center">
-                                                    <span class="me-4">
-                                                        <strong>กว้าง:</strong> ${new_width_<?php echo $detail['pnd_id']; ?>.toFixed(2)} มม.
-                                                    </span>
-                                                    <span>
-                                                        <strong>สูง:</strong> ${new_height_<?php echo $detail['pnd_id']; ?>.toFixed(2)} มม.
-                                                    </span>
-                                                </div>
-                                                <div class="svg-container">
-                                                    <svg viewBox="0 0 300 200" preserveAspectRatio="xMidYMid meet" style="width: 100%; height: auto; background: white; border: 1px solid #ddd;">
-                                                        ${generateRectSVG(new_width_<?php echo $detail['pnd_id']; ?>, new_height_<?php echo $detail['pnd_id']; ?>)}
-                                                    </svg>
-                                                </div>
+                    <tr class="text-center part-row" id="row_${<?php echo $detail['pnd_id']; ?>}">
+                        <td>${'<?php echo $detailType; ?>'}</td>
+                        <td>${'<?php echo $detailName; ?>'}</td>
+                        <td>${new_width_<?php echo $detail['pnd_id']; ?>.toFixed(2)}</td>
+                        <td>${new_height_<?php echo $detail['pnd_id']; ?>.toFixed(2)}</td>
+                        <td>${new_thick_<?php echo $detail['pnd_id']; ?>.toFixed(2)}</td>
+                        <td>${ratio_width_<?php echo $detail['pnd_id']; ?>.toFixed(2)}</td>
+                        <td>${ratio_height_<?php echo $detail['pnd_id']; ?>.toFixed(2)}</td>
+                        <td>${ratio_thick_<?php echo $detail['pnd_id']; ?>.toFixed(2)}</td>
+                        <td>
+                            <button class="btn btn-sm btn-info toggle-vis-btn" data-part-id="${<?php echo $detail['pnd_id']; ?>}">
+                                <i class="fas fa-eye"></i> ดูภาพ
+                            </button>
+                        </td>
+                    </tr>
+                    
+                    <!-- แถวสำหรับแสดงภาพ -->
+                    <tr class="visualization-row" id="vis_row_${<?php echo $detail['pnd_id']; ?>}" style="display: none;">
+                        <td colspan="9" class="p-0">
+                            <div class="visualization-container p-3 border-top">
+                                <div class="visualization-header text-center">
+                                    <h5 class="mt-3">ภาพจำลองของ <strong>${'<?php echo $detailName; ?>'}</strong> (ในมือถือขนาดอาจไม่ตรงตามจริง)</h5>
+                                </div>
+                                <div class="row">
+                                    <!-- มุมมองที่ 1: กว้าง x สูง -->
+                                    <div class="col-md-6 mt-5">
+                                        <div class="visualization-title">มุมมองที่ 1: กว้าง × สูง</div>
+                                        <div class="wire-size-visualization">
+                                            <div class="mb-2 text-center">
+                                                <span class="me-4">
+                                                    <strong>กว้าง:</strong> ${new_width_<?php echo $detail['pnd_id']; ?>.toFixed(2)} มม.
+                                                </span>
+                                                <span>
+                                                    <strong>สูง:</strong> ${new_height_<?php echo $detail['pnd_id']; ?>.toFixed(2)} มม.
+                                                </span>
                                             </div>
-                                        </div>
-                                        
-                                        <!-- มุมมองที่ 2: สูง x หนา -->
-                                        <div class="col-md-6 mt-5">
-                                            <div class="visualization-title">มุมมองที่ 2: สูง × หนา</div>
-                                            <div class="wire-size-visualization">
-                                                <div class="mb-2 text-center">
-                                                    <span class="me-4">
-                                                        <strong>สูง:</strong> ${new_height_<?php echo $detail['pnd_id']; ?>.toFixed(2)} มม.
-                                                    </span>
-                                                    <span>
-                                                        <strong>หนา:</strong> ${new_thick_<?php echo $detail['pnd_id']; ?>.toFixed(2)} มม.
-                                                    </span>
-                                                </div>
-                                                <div class="svg-container">
-                                                    <svg viewBox="0 0 300 200" preserveAspectRatio="xMidYMid meet" style="width: 100%; height: auto; background: white; border: 1px solid #ddd;">
-                                                        ${generateRectSVG(new_thick_<?php echo $detail['pnd_id']; ?>,new_height_<?php echo $detail['pnd_id']; ?>)}
-                                                    </svg>
-                                                </div>
+                                            <div class="svg-container">
+                                                <svg viewBox="0 0 300 200" preserveAspectRatio="xMidYMid meet" style="width: 100%; height: auto; background: white; border: 1px solid #ddd;">
+                                                    ${generateRectSVG(new_width_<?php echo $detail['pnd_id']; ?>, new_height_<?php echo $detail['pnd_id']; ?>)}
+                                                </svg>
                                             </div>
                                         </div>
                                     </div>
                                     
-                                    <div class="text-center mt-3">
-                                        <button class="btn btn-sm btn-secondary hide-vis-btn" data-part-id="${<?php echo $detail['pnd_id']; ?>}">
-                                            <i class="fas fa-eye-slash"></i> ซ่อนภาพ
-                                        </button>
+                                    <!-- มุมมองที่ 2: สูง x หนา -->
+                                    <div class="col-md-6 mt-5">
+                                        <div class="visualization-title">มุมมองที่ 2: สูง × หนา</div>
+                                        <div class="wire-size-visualization">
+                                            <div class="mb-2 text-center">
+                                                <span class="me-4">
+                                                    <strong>สูง:</strong> ${new_height_<?php echo $detail['pnd_id']; ?>.toFixed(2)} มม.
+                                                </span>
+                                                <span>
+                                                    <strong>หนา:</strong> ${new_thick_<?php echo $detail['pnd_id']; ?>.toFixed(2)} มม.
+                                                </span>
+                                            </div>
+                                            <div class="svg-container">
+                                                <svg viewBox="0 0 300 200" preserveAspectRatio="xMidYMid meet" style="width: 100%; height: auto; background: white; border: 1px solid #ddd;">
+                                                    ${generateRectSVG(new_thick_<?php echo $detail['pnd_id']; ?>,new_height_<?php echo $detail['pnd_id']; ?>)}
+                                                </svg>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </td>
-                        </tr>
-                        `;
+                                
+                                <div class="text-center mt-3">
+                                    <button class="btn btn-sm btn-secondary hide-vis-btn" data-part-id="${<?php echo $detail['pnd_id']; ?>}">
+                                        <i class="fas fa-eye-slash"></i> ซ่อนภาพ
+                                    </button>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    `;
                     <?php endif; ?>
                 <?php endforeach; ?>
 
@@ -736,6 +878,81 @@ function calculate_percent($total, $part)
                 return '<tr><td colspan="9" class="text-center">ไม่พบข้อมูลรายละเอียดอะไหล่</td></tr>';
             }
         <?php endif; ?>
+        // เพิ่มฟังก์ชันนี้ใน percent_necklace.js
+        function calculateReferenceWidth() {
+            let referenceWidth = 0;
+            let totalMultiWidth = 0;
+            let multiCount = 0;
+
+            <?php if (!empty($necklace_details)) : ?>
+                <?php foreach ($necklace_details as $detail) : ?>
+                    <?php if ($detail['pnd_type'] === 'มัลติ' && !empty($detail['scale_wire_weight'])) : ?>
+                        totalMultiWidth += <?php echo floatval($detail['scale_wire_weight']); ?>;
+                        multiCount++;
+                    <?php endif; ?>
+                <?php endforeach; ?>
+
+                // ถ้ามีประเภทมัลติ ใช้ความกว้างรวมของมัลติทั้งหมด
+                if (multiCount > 0) {
+                    referenceWidth = totalMultiWidth;
+                } else {
+                    // ถ้าไม่มีมัลติ ค้นหาสร้อยหรือกำไลอันแรกแทน
+                    <?php foreach ($necklace_details as $detail) : ?>
+                        <?php if (($detail['pnd_type'] === 'สร้อย' || $detail['pnd_type'] === 'กำไล') && !empty($detail['scale_wire_weight'])) : ?>
+                            if (referenceWidth === 0) {
+                                referenceWidth = <?php echo floatval($detail['scale_wire_weight']); ?>;
+                            }
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                }
+            <?php endif; ?>
+
+            // ถ้ามีการกรอกค่า custom_scale_wire_weight ให้ใช้ค่านั้นแทน
+            const customWidth = parseFloat($("#custom_scale_wire_weight").val());
+            if (!isNaN(customWidth) && customWidth > 0) {
+                return customWidth;
+            }
+
+            return referenceWidth;
+        }
+        // รูปแบบการแสดงผลในตัวเลือก (dropdown)
+        function formatNecklaceOption(option) {
+            if (!option.id) {
+                return option.text;
+            }
+
+            // ถ้าเป็นการแสดงในดรอปดาวน์ ใช้ชื่อเต็ม
+            const fullName = $(option.element).data('full-name');
+            return $('<span>' + fullName + '</span>');
+        }
+
+        // รูปแบบการแสดงผลเมื่อเลือกแล้ว
+        function formatNecklaceSelection(option) {
+            if (!option.id) {
+                return option.text;
+            }
+
+            // ตรวจสอบขนาดหน้าจอ
+            if (window.innerWidth < 768) { // ถ้าเป็นมือถือ
+                // แสดงเฉพาะชื่อสั้น ๆ
+                return option.text;
+            } else {
+                // ถ้าหน้าจอใหญ่ แสดงชื่อเต็ม
+                const fullName = $(option.element).data('full-name');
+                return fullName;
+            }
+        }
+
+        // ปรับขนาดเมื่อหมุนหน้าจอหรือเปลี่ยนขนาด
+        $(window).on('resize', function() {
+            // บังคับให้ select2 อัพเดตการแสดงผล
+            $("#select_necklace_name").select2('destroy').select2({
+                width: '100%',
+                placeholder: '-- เลือกสร้อย --',
+                templateResult: formatNecklaceOption,
+                templateSelection: formatNecklaceSelection
+            });
+        });
     </script>
 </body>
 

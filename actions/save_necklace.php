@@ -85,11 +85,20 @@ try {
     }
 
     // บันทึกข้อมูลสัดส่วน
-    if (!empty($_POST['proportions_size']) || !empty($_POST['proportions_width']) || !empty($_POST['proportions_thick'])) {
-        $proportions_size = $_POST['proportions_size'] ?? 0;
-        $proportions_width = $_POST['proportions_width'] ?? 0;
-        $proportions_thick = $_POST['proportions_thick'] ?? 0;
-        $shapeshape_necklace = !empty($_POST['shapeshape_necklace']) ? $_POST['shapeshape_necklace'] : null;
+    if (!empty($_POST['proportions_size']) || !empty($_POST['proportions_width']) || !empty($_POST['proportions_thick']) || !empty($_POST['shapeshape_necklace'])) {
+        $shapeshape_necklace = !empty($_POST['shapeshape_necklace']) ? $_POST['shapeshape_necklace'] : 'สี่เหลี่ยม';
+
+        // ตรวจสอบและกำหนดค่าตามรูปร่าง
+        $proportions_size = !empty($_POST['proportions_size']) ? floatval($_POST['proportions_size']) : 0;
+
+        // ถ้าเป็นวงกลม ให้ใช้ค่าความกว้าง (width) เป็นเส้นผ่านศูนย์กลาง และความหนา (thick) = 0
+        if ($shapeshape_necklace === 'วงกลม') {
+            $proportions_width = !empty($_POST['proportions_width']) ? floatval($_POST['proportions_width']) : 0;
+            $proportions_thick = 0; // กำหนดความหนาเป็น 0 เมื่อเป็นวงกลม
+        } else {
+            $proportions_width = !empty($_POST['proportions_width']) ? floatval($_POST['proportions_width']) : 0;
+            $proportions_thick = !empty($_POST['proportions_thick']) ? floatval($_POST['proportions_thick']) : 0;
+        }
 
         // เรียกใช้ update_necklace_proportions แทน add_necklace_proportions
         update_necklace_proportions($pdo, $id, $proportions_size, $proportions_width, $proportions_thick, $shapeshape_necklace);

@@ -22,13 +22,57 @@ function get_necklace_all_details($pdo)
                 nd.comment,
                 nd.updated_users_id, 
                 u.first_name,
+                u.last_name,
                 nd.updated_at
             FROM necklace_detail nd
             LEFT JOIN necklace_proportions np ON nd.necklace_detail_id = np.necklace_detail_id
             LEFT JOIN users u ON nd.updated_users_id = u.users_id
-            WHERE nd.necklace_detail_id IS NOT NULL
+            WHERE nd.pd_status='master'
             GROUP BY nd.necklace_detail_id
             ORDER BY nd.name";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+function get_necklace_all_copy($pdo)
+{
+    $sql = "SELECT 
+                nd.necklace_detail_id, 
+                nd.name, 
+                nd.type, 
+                nd.ptt_thick, 
+                nd.ptt_core, 
+                nd.ptt_ratio, 
+                nd.agpt_thick, 
+                nd.agpt_core, 
+                nd.agpt_ratio, 
+                nd.true_length, 
+                nd.true_weight,
+                ANY_VALUE(np.proportions_size) AS proportions_size,
+                ANY_VALUE(np.proportions_width) AS proportions_width,
+                ANY_VALUE(np.proportions_thick) AS proportions_thick,
+                ANY_VALUE(IFNULL(proportions_width / NULLIF(np.proportions_size, 0), 0)) AS ratio_width,
+                ANY_VALUE(IFNULL(proportions_thick / NULLIF(np.proportions_size, 0), 0)) AS ratio_thick,
+                nd.image,
+                nd.comment,
+                nd.updated_users_id, 
+                u.first_name,
+                nd.updated_at,
+                ANY_VALUE(nc.weight) AS calc_weight,
+                ANY_VALUE(nc.length) AS calc_length,
+                ANY_VALUE(nc.gold_type) AS gold_type,
+                ANY_VALUE(nc.ratio_id) AS ratio_id,
+                ANY_VALUE(rd.ratio_data) AS ratio_data
+            FROM necklace_detail nd
+            LEFT JOIN necklace_proportions np ON nd.necklace_detail_id = np.necklace_detail_id
+            LEFT JOIN users u ON nd.updated_users_id = u.users_id
+            LEFT JOIN necklace_calculation nc ON nd.necklace_detail_id = nc.necklace_detail_id
+            LEFT JOIN ratio_data rd ON nc.ratio_id = rd.ratio_id
+            WHERE nd.pd_status='copy'
+            GROUP BY nd.necklace_detail_id
+            ORDER BY nd.updated_at DESC";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
@@ -58,15 +102,70 @@ function get_necklace_details_by_user($pdo, $user_id)
                 nd.comment, 
                 nd.updated_users_id,
                 u.first_name,
-                nd.updated_at
+                u.last_name,
+                nd.updated_at,
+                CASE 
+                    WHEN nd.updated_users_id = :user_id THEN 'own' 
+                    ELSE 'shared' 
+                END AS access_type,
+                CASE 
+                    WHEN ns.sharing_by IS NOT NULL THEN ns.sharing_by
+                    ELSE NULL
+                END AS shared_by
             FROM necklace_detail nd
             LEFT JOIN necklace_proportions np ON nd.necklace_detail_id = np.necklace_detail_id
             LEFT JOIN users u ON nd.updated_users_id = u.users_id
-            WHERE nd.updated_users_id = :user_id
+            LEFT JOIN necklace_sharing ns ON nd.necklace_detail_id = ns.nd_id AND ns.users_id = :user_id
+            WHERE nd.updated_users_id = :user_id OR ns.users_id = :user_id
             GROUP BY nd.necklace_detail_id";
 
     $stmt = $pdo->prepare($sql);
+    $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+function get_necklace_all_copy_by_user($pdo, $user_id)
+{
+    $sql = "SELECT 
+                nd.necklace_detail_id, 
+                nd.name, 
+                nd.type, 
+                nd.ptt_thick, 
+                nd.ptt_core, 
+                nd.ptt_ratio, 
+                nd.agpt_thick, 
+                nd.agpt_core, 
+                nd.agpt_ratio, 
+                nd.true_length, 
+                nd.true_weight,
+                ANY_VALUE(np.proportions_size) AS proportions_size,
+                ANY_VALUE(np.proportions_width) AS proportions_width,
+                ANY_VALUE(np.proportions_thick) AS proportions_thick,
+                ANY_VALUE(IFNULL(proportions_width / NULLIF(np.proportions_size, 0), 0)) AS ratio_width,
+                ANY_VALUE(IFNULL(proportions_thick / NULLIF(np.proportions_size, 0), 0)) AS ratio_thick,
+                nd.image,
+                nd.comment,
+                nd.updated_users_id, 
+                u.first_name,
+                nd.updated_at,
+                ANY_VALUE(nc.weight) AS calc_weight,
+                ANY_VALUE(nc.length) AS calc_length,
+                ANY_VALUE(nc.gold_type) AS gold_type,
+                ANY_VALUE(nc.ratio_id) AS ratio_id,
+                ANY_VALUE(rd.ratio_data) AS ratio_data
+            FROM necklace_detail nd
+            LEFT JOIN necklace_proportions np ON nd.necklace_detail_id = np.necklace_detail_id
+            LEFT JOIN users u ON nd.updated_users_id = u.users_id
+            LEFT JOIN necklace_calculation nc ON nd.necklace_detail_id = nc.necklace_detail_id
+            LEFT JOIN ratio_data rd ON nc.ratio_id = rd.ratio_id
+            WHERE nd.pd_status='copy' AND nd.updated_users_id = :user_id
+            GROUP BY nd.necklace_detail_id
+            ORDER BY nd.updated_at DESC";
+
+    $stmt = $pdo->prepare($sql);
     $stmt->execute(['user_id' => $user_id]);
+    $stmt->execute();
 
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
@@ -365,4 +464,10 @@ function sanitize_filename($filename)
     $filename = preg_replace('/[^a-zA-Z0-9ก-๙\-_.]/', '_', $filename);
     $filename = preg_replace('/-+/', '-', $filename);
     return strtolower(trim($filename, '-'));
+}
+function get_calculation_data($pdo, $necklace_id)
+{
+    $stmt = $pdo->prepare("SELECT * FROM necklace_calculation WHERE necklace_detail_id = :necklace_id ORDER BY created_at DESC LIMIT 1");
+    $stmt->execute(['necklace_id' => $necklace_id]);
+    return $stmt->fetch(PDO::FETCH_ASSOC);
 }

@@ -14,6 +14,9 @@ $(document).ready(function () {
 
   // เพิ่ม event listeners สำหรับการคำนวณเรียลไทม์
   initializeCalculationInputs();
+
+  // ตรวจสอบว่าผู้ใช้ได้ปรับแต่งค่า pxPerMM หรือไม่
+  checkCalibration();
 });
 
 /**
@@ -195,6 +198,42 @@ function generateDetailRows(totalGrams, pricePerGram) {
   return rows;
 }
 
+function calculateAndShowRatios(scale_wire_weight) {
+  if (scale_wire_weight <= 0) {
+    return;
+  }
+
+  // สร้างแถวสำหรับรายละเอียดแต่ละชิ้นส่วน
+  const tableRows = generateRatioRows(scale_wire_weight);
+
+  // แสดงผลลัพธ์
+  $("#ratioTableBody").html(tableRows);
+  $("#visualizationContainer").html("").hide();
+  $("#ratioResult").show();
+
+  // เพิ่มคำอธิบายการคำนวณ ratio จากประเภทมัลติ (ถ้ามี)
+  const referenceWidth = calculateReferenceWidth();
+  const referenceType =
+    referenceWidth > 0 && referenceWidth !== scale_wire_weight
+      ? "มัลติ"
+      : "สร้อย";
+
+  // เพิ่ม note เกี่ยวกับที่มาของค่า ratio
+  $("#ratioTableBody").after(`
+    <tr>
+      <td colspan="9" class="text-muted small text-end">
+        <i class="fas fa-info-circle"></i> 
+        อัตราส่วนคำนวณจากความกว้างอ้างอิง (${referenceWidth.toFixed(
+          2
+        )} มม.) จากประเภท ${referenceType}
+      </td>
+    </tr>
+  `);
+
+  // เพิ่ม event listeners สำหรับปุ่มแสดง/ซ่อนภาพ
+  setupVisualizationButtons();
+}
+
 /**
  * คำนวณและแสดงผลลัพธ์อัตราส่วนอะไหล่
  * @param {number} scale_wire_weight - ความกว้างของสร้อย
@@ -217,20 +256,6 @@ function calculateAndShowRatios(scale_wire_weight) {
 }
 
 /**
- * สร้างแถวสำหรับตารางอัตราส่วน
- * @param {number} scale_wire_weight - ความกว้างของสร้อย
- * @returns {string} - HTML สำหรับแถวของตาราง
- */
-function generateRatioRows(scale_wire_weight) {
-  let rows = "";
-
-  // วนลูปผ่านรายการรายละเอียดชิ้นส่วนและสร้างแถวสำหรับแต่ละชิ้น
-  // ส่วนนี้จะถูกนำเข้าจากข้อมูลที่มีอยู่ในหน้า PHP
-
-  return rows;
-}
-
-/**
  * ตั้งค่าปุ่มสำหรับแสดง/ซ่อนภาพจำลอง
  */
 function setupVisualizationButtons() {
@@ -245,6 +270,76 @@ function setupVisualizationButtons() {
     $(`#vis_row_${partId}`).hide();
     $(`#row_${partId}`).removeClass("active-row");
   });
+}
+
+function checkCalibration() {
+  const savedCalibration = localStorage.getItem("pxPerMMCalibration");
+
+  // ต้องการแสดงข้อความก่อนแบบฟอร์ม หรือตรงที่เหมาะสม
+  const targetElement = $(".card-body form").first(); // หรือแทนที่ด้วย selector ที่เหมาะสม
+
+  if (savedCalibration !== null) {
+    // มีการปรับแต่งแล้ว แสดงข้อความสีฟ้า
+    const customValue = parseFloat(savedCalibration).toFixed(2);
+    const message = `
+      <div class="alert alert-info alert-dismissible fade show">
+        <i class="fas fa-info-circle"></i> คุณกำลังใช้การปรับแต่งขนาดแสดงผล (${customValue} พิกเซล/มม.) หากรูปที่ได้ไม่ตรงปรับแก้ที่
+        <a href="profile.php" class="alert-link">โปรไฟล์ของคุณ</a>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>`;
+
+    // ลบแจ้งเตือนเดิม (ถ้ามี)
+    $(".alert-warning, .alert-info").remove();
+
+    // เพิ่มข้อความแจ้งเตือนที่ด้านบนของฟอร์ม
+    if (targetElement.length > 0) {
+      targetElement.before(message);
+    } else {
+      // ถ้าไม่พบ targetElement ให้แทรกใต้ card-header แทน
+      $(".card-header").first().after(message);
+    }
+  } else {
+    // ยังไม่มีการปรับแต่ง แสดงข้อความสีเหลือง
+    const message = `
+      <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <strong>คำเตือน!</strong> คุณยังไม่ได้ปรับแต่งการแสดงขนาดจริง การแสดงผลอาจไม่ตรงกับความเป็นจริง 
+        <a href="profile.php" class="alert-link">คลิกที่นี่เพื่อปรับแต่ง</a>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>`;
+
+    // ลบแจ้งเตือนเดิม (ถ้ามี)
+    $(".alert-warning, .alert-info").remove();
+
+    // เพิ่มข้อความแจ้งเตือน
+    if (targetElement.length > 0) {
+      targetElement.before(message);
+    } else {
+      // ถ้าไม่พบ targetElement ให้แทรกใต้ card-header แทน
+      $(".card-header").first().after(message);
+    }
+  }
+}
+
+/**
+ * เพิ่มฟังก์ชันดึงค่า PxPerMM จาก localStorage
+ * @returns {number} ค่า pixel ต่อ mm ที่ใช้ในการแสดงผล
+ */
+function getPxPerMM() {
+  // ตรวจสอบค่าที่บันทึกไว้ใน localStorage
+  const savedCalibration = localStorage.getItem("pxPerMMCalibration");
+  // ถ้ามีค่าที่บันทึกไว้ ให้ใช้ค่านั้น
+  if (savedCalibration !== null) {
+    return parseFloat(savedCalibration);
+  }
+  // วิธีคำนวณจริงจากหน้าจอ
+  const div = document.createElement("div");
+  div.style.width = "1mm";
+  div.style.position = "absolute";
+  div.style.visibility = "hidden";
+  document.body.appendChild(div);
+  const pxPerMM = div.offsetWidth;
+  document.body.removeChild(div);
+  return pxPerMM;
 }
 
 /**
@@ -328,6 +423,9 @@ $("#saveAsCopyBtn").click(function () {
     "pn_id"
   );
 
+  // เพิ่มข้อมูลประเภทมัลติเข้าไปเพื่อรองรับการคำนวณที่ถูกต้อง
+  const referenceWidth = calculateReferenceWidth();
+
   // ตรวจสอบว่ามีการกรอกข้อมูลที่จำเป็นครบถ้วน
   if (!pn_grams || !selected_pn_id) {
     Swal.fire("ผิดพลาด", "กรุณากรอกข้อมูลน้ำหนัก (กรัม) ให้ครบถ้วน", "error");
@@ -352,6 +450,7 @@ $("#saveAsCopyBtn").click(function () {
       pn_name: pn_name,
       pn_grams: pn_grams,
       custom_scale_wire_weight: custom_scale_wire_weight,
+      reference_width: referenceWidth, // เพิ่มค่านี้เข้าไป
       original_pn_id: selected_pn_id,
     },
     dataType: "json",

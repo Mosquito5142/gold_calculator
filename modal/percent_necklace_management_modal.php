@@ -1,5 +1,5 @@
     <!-- Modal -->
-    <div class="modal fade" id="percentModal" tabindex="-1">
+    <div class="modal fade" id="percentModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
@@ -30,7 +30,6 @@
                             <div class="col-md-8">
                                 <label class="form-label">รูปภาพ</label>
                                 <input type="file" class="form-control" name="image" id="image" accept="image/jpeg,image/png,image/webp">
-                                <small class="text-muted">รองรับไฟล์ JPG, PNG, WebP ขนาดไม่เกิน 5MB</small>
                             </div>
                             <div class="col-md-4">
                                 <div id="image_preview_container" class="mt-2 text-center" style="display: none;">
@@ -58,7 +57,7 @@
                                         <input type="number" id="total_percent" class="form-control" readonly>
                                     </div>
                                     <div class="col-md-2">
-                                        <label class="form-label">ความยาว</label>
+                                        <label class="form-label">ความยาว (นิ้ว)</label>
                                         <input type="number" id="total_length" class="form-control" readonly>
                                     </div>
                                 </div>
@@ -67,19 +66,19 @@
                                 <div class="row mt-1">
                                     <input type="hidden" name="pnd_type_special[]" value="">
                                     <div class="col-md-5">
-                                        <label class="form-label">ชื่อ</label>
+                                        <label class="form-label">ชื่อ <span style="color: red;">(* เลขติดลบ)</span></label>
                                         <input type="text" class="form-control" name="pnd_name_special[]" value="เผื่อตัดลาย" readonly>
                                     </div>
                                     <div class="col-md-2">
-                                        <label class="form-label">น้ำหนัก</label>
-                                        <input type="number" id="cut_weight" class="form-control" name="pnd_weight_special[]" step="0.01" max="0" style="background-color: #fff9c4; --placeholder-color: red;" placeholder="เลขติดลบ">
+                                        <label class="form-label">น้ำหนัก (กรัม)</label>
+                                        <input type="number" id="cut_weight" class="form-control" name="pnd_weight_special[]" step="0.01" max="0" style="background-color: #fff9c4; --placeholder-color: red;" placeholder="เลขติดลบ" value=0 required>
                                     </div>
                                     <div class="col-md-2">
                                         <label class="form-label">%</label>
                                         <input type="number" id="cut_percent" class="form-control" readonly>
                                     </div>
                                     <div class="col-md-2">
-                                        <label class="form-label">ความยาว</label>
+                                        <label class="form-label">ความยาว (นิ้ว)</label>
                                         <input type="number" id="cut_length" class="form-control" name="pnd_long_special[]" step="0.01" style="background-color: #fff9c4;">
                                     </div>
                                 </div>
@@ -92,15 +91,15 @@
                                         <input type="text" class="form-control" name="pnd_name_special[]" value="ตะขอ" readonly>
                                     </div>
                                     <div class="col-md-2">
-                                        <label class="form-label">น้ำหนัก</label>
-                                        <input type="number" id="hook_weight" class="form-control" name="pnd_weight_special[]" step="0.01" style="background-color: #fff9c4;">
+                                        <label class="form-label">น้ำหนัก (กรัม)</label>
+                                        <input type="number" id="hook_weight" class="form-control" name="pnd_weight_special[]" step="0.01" style="background-color: #fff9c4;" value=0 required>
                                     </div>
                                     <div class="col-md-2">
                                         <label class="form-label">%</label>
                                         <input type="number" id="hook_percent" class="form-control" readonly>
                                     </div>
                                     <div class="col-md-2">
-                                        <label class="form-label">ความยาว</label>
+                                        <label class="form-label">ความยาว (นิ้ว)</label>
                                         <input type="number" id="hook_length" class="form-control" name="pnd_long_special[]" step="0.01" style="background-color: #fff9c4;">
                                     </div>
                                 </div>
@@ -114,7 +113,9 @@
                 </div>
                 <div class="modal-footer d-flex justify-content-end">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
-                    <button type="button" class="btn btn-primary" onclick="savePercent()">บันทึก</button>
+                    <button type="button" class="btn btn-primary" onclick="savePercent()" data-bs-toggle="tooltip" data-bs-placement="top" title="น้ำหนักสร้อยและน้ำหนักรวมชิ้นส่วนต้องเท่ากันเพื่อบันทึก">
+                        บันทึก
+                    </button>
                 </div>
             </div>
         </div>
@@ -123,10 +124,6 @@
     <div class="modal fade" id="imageModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="imageModalTitle"></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
                 <div class="modal-body text-center">
                     <img id="fullImage" class="img-fluid" src="">
                 </div>
@@ -144,7 +141,7 @@
                 <div class="modal-body" id="percentViewContent">
                     <!-- Content will be loaded dynamically here -->
                 </div>
-                <div class="modal-footer" id="percentViewFooter">
+                <div class="modal-footer d-flex justify-content-end" id="percentViewFooter">
                     <!-- ปุ่มจะถูกเพิ่มโดย JavaScript -->
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
                 </div>
