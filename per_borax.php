@@ -293,7 +293,7 @@ require 'config/db_connect.php';
                         </div>
 
                         <!-- ผลลัพธ์แบบสรุป -->
-                        <div id="resultSection" class="mt-5" style="display: none;">
+                        <div id="resultSection" class="mt-5">
                             <div class="table-responsive">
                                 <table class="excel-table result-table">
                                     <thead>
@@ -378,7 +378,6 @@ require 'config/db_connect.php';
                 // การกำหนดค่าเริ่มต้น (รีเซ็ตฟอร์ม)
                 function resetForm() {
                     $('input[type="text"]:not([readonly]), input[type="number"]').val('');
-                    $('#resultSection').hide();
                     $('#boraxPercent').val(defaultBoraxPercent);
                 }
 
@@ -448,14 +447,6 @@ require 'config/db_connect.php';
 
                     // แสดงค่าน้ำประสานที่แถวน้ำประสานด้านบนด้วย
                     $('.borax-result-highlight').text(maxBoraxWeight.toFixed(2) + " กรัม");
-
-                    // แสดงส่วนผลลัพธ์
-                    $('#resultSection').fadeIn();
-
-                    // เลื่อนไปที่ผลลัพธ์
-                    $('html, body').animate({
-                        scrollTop: $("#resultSection").offset().top - 20
-                    }, 500);
                 });
                 // ฟังก์ชันรวบรวมข้อมูลจากฟอร์มที่กรอก
                 function collectFormData() {
@@ -667,7 +658,7 @@ require 'config/db_connect.php';
 
                             // ปุ่มลบจะแสดงเฉพาะสูตรของตัวเอง
                             const deleteButton = isOwnFormula ?
-                                `<button class="btn btn-sm btn-outline-danger delete-formula" data-id="${formula.formula_id}" data-name="${formula.formula_name}" style="padding:2px 5px;">
+                                `<button class="btn btn-sm btn-outline-danger delete-formula" data-id="${formula.formula_id}" data-name="${formula.formula_name}" style="padding:2px 5px;" title="ลบสูตรนี้">
                     <i class="fas fa-trash-alt"></i>
                 </button>` : '';
 
@@ -677,8 +668,8 @@ require 'config/db_connect.php';
                     <td class="align-middle py-1 small">${ownerName}</td>
                     <td class="align-middle py-1 small">${formattedDate}</td>
                     <td class="text-center py-1">
-                        <div class="btn-group">
-                            <button class="btn btn-sm btn-outline-primary load-formula" data-id="${formula.formula_id}" style="padding:2px 5px;">
+                        <div class="">
+                            <button class="btn btn-sm btn-outline-primary load-formula" data-id="${formula.formula_id}" style="padding:2px 5px;" title="นำเข้าสูตรนี้">
                                 <i class="fas fa-file-import"></i>
                             </button>
                             ${deleteButton}

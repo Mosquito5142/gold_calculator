@@ -216,33 +216,33 @@ if ($gram >= 0 && $gram <= 7.6) {
 
                             <div class="collapse" id="referenceTable">
                                 <div class="table-responsive">
-                                    <table class="table table-bordered">
+                                    <table class="table table-bordered border-dark">
                                         <thead class="bg-light">
                                             <tr>
-                                                <th class="text-center">น้ำหนักขอบล่าง (กรัม)</th>
-                                                <th class="text-center">น้ำหนักขอบบน (กรัม)</th>
-                                                <th class="text-center">เปอร์เซ็นต์ต่ำสุด (%)</th>
-                                                <th class="text-center">เปอร์เซ็นต์สูงสุด (%)</th>
+                                                <th class="text-center border-dark">น้ำหนักขอบล่าง (กรัม)</th>
+                                                <th class="text-center border-dark">น้ำหนักขอบบน (กรัม)</th>
+                                                <th class="text-center border-dark">เปอร์เซ็นต์ต่ำสุด (%)</th>
+                                                <th class="text-center border-dark">เปอร์เซ็นต์สูงสุด (%)</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <tr>
-                                                <td class="text-center">0</td>
-                                                <td class="text-center">7.6</td>
-                                                <td class="text-center">92.80</td>
-                                                <td class="text-center">93.00</td>
+                                                <td class="text-center border-dark">0</td>
+                                                <td class="text-center border-dark">7.6</td>
+                                                <td class="text-center border-dark">92.80</td>
+                                                <td class="text-center border-dark">93.00</td>
                                             </tr>
                                             <tr>
-                                                <td class="text-center">7.61</td>
-                                                <td class="text-center">15.2</td>
-                                                <td class="text-center">93.80</td>
-                                                <td class="text-center">94.00</td>
+                                                <td class="text-center border-dark">7.61</td>
+                                                <td class="text-center border-dark">15.2</td>
+                                                <td class="text-center border-dark">93.80</td>
+                                                <td class="text-center border-dark">94.00</td>
                                             </tr>
                                             <tr>
-                                                <td class="text-center">15.21</td>
-                                                <td class="text-center">ไม่มีขอบบน</td>
-                                                <td class="text-center">94.20</td>
-                                                <td class="text-center">94.40</td>
+                                                <td class="text-center border-dark">15.21</td>
+                                                <td class="text-center border-dark">ไม่มีขอบบน</td>
+                                                <td class="text-center border-dark">94.20</td>
+                                                <td class="text-center border-dark">94.40</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -282,7 +282,7 @@ if ($gram >= 0 && $gram <= 7.6) {
                                         <td class="part-header" width="35%"><strong>%</strong></td>
                                     </tr>
                                     <tr class="result-row">
-                                        <td><strong>สร้อย + อะไหล่</strong></td>
+                                        <td><strong>สร้อย</strong></td>
                                         <td class="text-center"><span id="result_necklace_parts_weight">?</span></td>
                                         <td class="text-center"><span id="result_necklace_percent">?</span></td>
                                     </tr>
@@ -505,7 +505,8 @@ if ($gram >= 0 && $gram <= 7.6) {
 
                 // คำนวณ %สูงสุด = (goldWeight * max_percentage - sumproduct) / necklaceWeight
                 const maxPercentResult = ((goldWeight * max_percentage / 100) - sumProduct) / necklaceWeight * 100;
-
+                // ค่าอะไหล่-ทอง-ทป (ต้องหักน้ำประสานออกด้วย)
+                const partsPercent = goldWeight - partsWeight - solderWeight;
                 // คำนวณน้ำหนักสร้อย + อะไหล่ (นำน้ำหนักสร้อยรวมกับน้ำหนักอะไหล่)
                 const necklacePartsWeight = necklaceWeight + partsWeight;
 
@@ -524,7 +525,7 @@ if ($gram >= 0 && $gram <= 7.6) {
                 $('#summary_total_weight').text(totalWeight.toFixed(2));
 
                 // แสดงผลลัพธ์ในตารางอะไหล่
-                $('#result_necklace_parts_weight').text(necklacePartsWeight.toFixed(2));
+                $('#result_necklace_parts_weight').text(partsPercent.toFixed(2));
                 $('#result_necklace_percent').text(`${minPercentResult.toFixed(2)} - ${maxPercentResult.toFixed(2)}`);
 
                 // เลื่อนไปที่ผลลัพธ์
@@ -684,8 +685,6 @@ if ($gram >= 0 && $gram <= 7.6) {
             });
 
             // แก้ไขฟังก์ชัน showFormulasModal เพื่อให้มีดีไซน์มินิมอล
-            // แสดงโมดัลรายการสูตร
-            // แสดงโมดัลรายการสูตร
             function showFormulasModal(formulas) {
                 let html = `
                     <div class="formula-modal">
@@ -749,7 +748,7 @@ if ($gram >= 0 && $gram <= 7.6) {
 
                         // ปุ่มลบจะแสดงเฉพาะสูตรของตัวเอง
                         const deleteButton = isOwnFormula ?
-                            `<button class="btn btn-sm btn-outline-danger delete-formula" data-id="${formula.formula_id}" data-name="${formula.formula_name}" style="padding:2px 5px;">
+                            `<button class="btn btn-sm btn-outline-danger delete-formula" data-id="${formula.formula_id}" data-name="${formula.formula_name}" style="padding:2px 5px;" title="ลบสูตรนี้">
                     <i class="fas fa-trash-alt"></i>
                 </button>` : '';
 
@@ -759,8 +758,8 @@ if ($gram >= 0 && $gram <= 7.6) {
                     <td class="align-middle py-1 small">${ownerName}</td>
                     <td class="align-middle py-1 small">${formattedDate}</td>
                     <td class="text-center py-1">
-                        <div class="btn-group">
-                            <button class="btn btn-sm btn-outline-primary load-formula" data-id="${formula.formula_id}" style="padding:2px 5px;">
+                        <div class="">
+                            <button class="btn btn-sm btn-outline-primary load-formula" data-id="${formula.formula_id}" style="padding:2px 5px;" title="นำเข้าสูตรนี้">
                                 <i class="fas fa-file-import"></i>
                             </button>
                             ${deleteButton}
@@ -998,7 +997,11 @@ if ($gram >= 0 && $gram <= 7.6) {
                     formula.items.forEach(item => {
                         switch (item.item_name) {
                             case 'นน.ทอง':
-                                if (item.weight) $('#goldWeight').val(item.weight);
+                                if (item.weight) {
+                                    $('#goldWeight').val(item.weight);
+                                    // ทริกเกอร์อีเวนต์ input เพื่อคำนวณค่า goldPercentage
+                                    $('#goldWeight').trigger('input');
+                                }
                                 break;
 
                             case 'น้ำประสาน(ผง)':
